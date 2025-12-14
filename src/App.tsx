@@ -4,6 +4,7 @@ import { AddClothingForm } from './components/AddClothingForm';
 import { WardrobeGallery } from './components/WardrobeGallery';
 import { EditClothingDialog } from './components/EditClothingDialog';
 import { Button } from './components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -18,6 +19,16 @@ function App() {
   const { items, loading, error, addItem, updateItem, deleteItem } = useWardrobe();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingItem, setEditingItem] = useState<ClothingItem | null>(null);
+  const [filterType, setFilterType] = useState<string | 'All'>('All');
+  const [filterBrand, setFilterBrand] = useState<string | 'All'>('All');
+
+  // Compute available filter options from items
+  const types = Array.from(new Set(items.map((i) => i.type))).sort();
+  const brands = Array.from(new Set(items.map((i) => i.brand))).filter(Boolean).sort();
+
+  const filteredItems = items
+    .filter((it) => (filterType === 'All' ? true : it.type === filterType))
+    .filter((it) => (filterBrand === 'All' ? true : it.brand === filterBrand));
 
   const handleEdit = (item: ClothingItem) => {
     setEditingItem(item);
@@ -43,9 +54,45 @@ function App() {
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">👔 My Wardrobe</h1>
               <p className="text-sm text-gray-600 mt-1">
-                {items.length} {items.length === 1 ? 'item' : 'items'} in your collection
+                {filteredItems.length} {filteredItems.length === 1 ? 'item' : 'items'}{' '}
+                {filterType !== 'All' && <span className="text-sm text-gray-500">— {filterType}</span>}
+                {filterBrand !== 'All' && <span className="text-sm text-gray-500"> — {filterBrand}</span>}
+                {filterType === 'All' && filterBrand === 'All' && (
+                  <span className="text-sm text-gray-500">in your collection</span>
+                )}
               </p>
             </div>
+
+            <div className="hidden sm:flex items-center gap-3 mr-4">
+              <Select value={filterType} onValueChange={(v) => setFilterType(v)}>
+                <SelectTrigger className="w-48 h-9">
+                  <SelectValue placeholder="Filter by type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All types</SelectItem>
+                  {types.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={filterBrand} onValueChange={(v) => setFilterBrand(v)}>
+                <SelectTrigger className="w-44 h-9">
+                  <SelectValue placeholder="Filter by brand" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All brands</SelectItem>
+                  {brands.map((b) => (
+                    <SelectItem key={b} value={b}>
+                      {b}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <Button onClick={() => setShowAddDialog(true)}>
               <Plus className="h-4 w-4 mr-2" />
               <span className="hidden sm:inline">Add New Item</span>
@@ -63,7 +110,7 @@ function App() {
           </div>
         )}
 
-        <WardrobeGallery items={items} onEdit={handleEdit} onDelete={deleteItem} />
+        <WardrobeGallery items={filteredItems} onEdit={handleEdit} onDelete={deleteItem} />
       </main>
 
       {/* Add Item Dialog */}

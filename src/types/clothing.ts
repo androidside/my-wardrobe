@@ -111,7 +111,6 @@ export const SHOE_SIZES: ShoeSize[] = [
 ];
 
 export const REGULAR_SIZES: RegularSize[] = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'One Size'];
-
 export function isFootwear(type: ClothingType): boolean {
   return FOOTWEAR_TYPES.includes(type);
 }

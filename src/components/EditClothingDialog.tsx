@@ -29,6 +29,7 @@ import {
 } from '@/types/clothing';
 import { storageService } from '@/utils/storage';
 
+
 const CLOTHING_TYPES: ClothingType[] = [
   'T-shirt',
   'Shirt',
