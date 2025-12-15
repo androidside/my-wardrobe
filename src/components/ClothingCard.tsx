@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Trash2, Edit } from 'lucide-react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,15 +9,18 @@ interface ClothingCardProps {
   imageUrl: string | null;
   onEdit: (item: ClothingItem) => void;
   onDelete: (id: string) => void;
+  onView?: (item: ClothingItem) => void;
 }
 
-export function ClothingCard({ item, imageUrl, onEdit, onDelete }: ClothingCardProps) {
+export function ClothingCard({ item, imageUrl, onEdit, onDelete, onView }: ClothingCardProps) {
   const [showActions, setShowActions] = useState(false);
 
   return (
     <Card
       className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-      onClick={() => setShowActions(!showActions)}
+      onClick={() => onView ? onView(item) : setShowActions(!showActions)}
+      onMouseEnter={() => setShowActions(true)}
+      onMouseLeave={() => setShowActions(false)}
     >
       {/* Image */}
       <div className="aspect-square bg-gray-100 relative overflow-hidden">

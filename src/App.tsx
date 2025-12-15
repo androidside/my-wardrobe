@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { Plus, Sparkles } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { AddClothingForm } from './components/AddClothingForm';
 import { WardrobeGallery } from './components/WardrobeGallery';
+import { MyProfile } from './components/MyProfile';
+import { ClothingDetailsDialog } from './components/ClothingDetailsDialog';
 import { EditClothingDialog } from './components/EditClothingDialog';
 import { Button } from './components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
@@ -19,6 +21,8 @@ function App() {
   const { items, loading, error, addItem, updateItem, deleteItem } = useWardrobe();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingItem, setEditingItem] = useState<ClothingItem | null>(null);
+  const [activePage, setActivePage] = useState<'wardrobe' | 'profile'>('wardrobe');
+  const [selectedItem, setSelectedItem] = useState<ClothingItem | null>(null);
   const [filterType, setFilterType] = useState<string | 'All'>('All');
   const [filterBrand, setFilterBrand] = useState<string | 'All'>('All');
 
@@ -52,52 +56,84 @@ function App() {
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">👔 My Wardrobe</h1>
-              <p className="text-sm text-gray-600 mt-1">
-                {filteredItems.length} {filteredItems.length === 1 ? 'item' : 'items'}{' '}
-                {filterType !== 'All' && <span className="text-sm text-gray-500">— {filterType}</span>}
-                {filterBrand !== 'All' && <span className="text-sm text-gray-500"> — {filterBrand}</span>}
-                {filterType === 'All' && filterBrand === 'All' && (
-                  <span className="text-sm text-gray-500">in your collection</span>
-                )}
-              </p>
+              {activePage === 'profile' ? (
+                <>
+                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">👤 My Profile</h1>
+                  <p className="text-sm text-gray-600 mt-1">Manage your personal information</p>
+                </>
+              ) : (
+                <>
+                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">👔 My Wardrobe</h1>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {filteredItems.length} {filteredItems.length === 1 ? 'item' : 'items'}{' '}
+                    {filterType !== 'All' && <span className="text-sm text-gray-500">— {filterType}</span>}
+                    {filterBrand !== 'All' && <span className="text-sm text-gray-500"> — {filterBrand}</span>}
+                    {filterType === 'All' && filterBrand === 'All' && (
+                      <span className="text-sm text-gray-500">in your collection</span>
+                    )}
+                  </p>
+                </>
+              )}
             </div>
 
-            <div className="hidden sm:flex items-center gap-3 mr-4">
-              <Select value={filterType} onValueChange={(v) => setFilterType(v)}>
-                <SelectTrigger className="w-48 h-9">
-                  <SelectValue placeholder="Filter by type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="All">All types</SelectItem>
-                  {types.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {t}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {activePage === 'wardrobe' && (
+              <div className="hidden sm:flex items-center gap-3 mr-4">
+                <Select value={filterType} onValueChange={(v) => setFilterType(v)}>
+                  <SelectTrigger className="w-48 h-9">
+                    <SelectValue placeholder="Filter by type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">All types</SelectItem>
+                    {types.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-              <Select value={filterBrand} onValueChange={(v) => setFilterBrand(v)}>
-                <SelectTrigger className="w-44 h-9">
-                  <SelectValue placeholder="Filter by brand" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="All">All brands</SelectItem>
-                  {brands.map((b) => (
-                    <SelectItem key={b} value={b}>
-                      {b}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <Select value={filterBrand} onValueChange={(v) => setFilterBrand(v)}>
+                  <SelectTrigger className="w-44 h-9">
+                    <SelectValue placeholder="Filter by brand" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">All brands</SelectItem>
+                    {brands.map((b) => (
+                      <SelectItem key={b} value={b}>
+                        {b}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="flex items-center gap-3">
+              {activePage === 'profile' && (
+                <button
+                  className="text-sm text-indigo-600 hover:text-indigo-700 px-3 py-2 font-medium"
+                  onClick={() => setActivePage('wardrobe')}
+                >
+                  ← Back
+                </button>
+              )}
+
+              {activePage === 'wardrobe' && (
+                <Button onClick={() => setShowAddDialog(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Add New Item</span>
+                  <span className="sm:inline md:hidden">Add</span>
+                </Button>
+              )}
+
+              <button
+                type="button"
+                className="text-sm text-indigo-600 hover:text-indigo-700 px-3 py-2 font-medium"
+                onClick={() => setActivePage('profile')}
+              >
+                👤 My Profile
+              </button>
             </div>
-
-            <Button onClick={() => setShowAddDialog(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Add New Item</span>
-              <span className="sm:inline md:hidden">Add</span>
-            </Button>
           </div>
         </div>
       </header>
@@ -110,8 +146,23 @@ function App() {
           </div>
         )}
 
-        <WardrobeGallery items={filteredItems} onEdit={handleEdit} onDelete={deleteItem} />
+        {activePage === 'wardrobe' ? (
+          <WardrobeGallery
+            items={filteredItems}
+            onEdit={handleEdit}
+            onDelete={deleteItem}
+            onView={(item) => setSelectedItem(item)}
+          />
+        ) : activePage === 'profile' ? (
+          <MyProfile />
+        ) : null}
       </main>
+
+      <ClothingDetailsDialog
+        item={selectedItem}
+        open={!!selectedItem}
+        onOpenChange={(open) => !open && setSelectedItem(null)}
+      />
 
       {/* Add Item Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>

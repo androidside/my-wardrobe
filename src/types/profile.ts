@@ -5,6 +5,8 @@ export interface UserProfile {
   shoeSize?: string; // EU shoe size string from SHOE_SIZES
   pantsSizeUs?: string; // numeric or string (US sizing)
   heightCm?: number;
+  weightKg?: number;
+  headSizeCm?: number;
   generalSize?: GeneralSize;
   notes?: string;
 }

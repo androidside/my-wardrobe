@@ -7,9 +7,10 @@ interface WardrobeGalleryProps {
   items: ClothingItem[];
   onEdit: (item: ClothingItem) => void;
   onDelete: (id: string) => void;
+  onView?: (item: ClothingItem) => void;
 }
 
-export function WardrobeGallery({ items, onEdit, onDelete }: WardrobeGalleryProps) {
+export function WardrobeGallery({ items, onEdit, onDelete, onView }: WardrobeGalleryProps) {
   const [imageUrls, setImageUrls] = useState<Record<string, string | null>>({});
 
   // Load image URLs for all items
@@ -49,6 +50,7 @@ export function WardrobeGallery({ items, onEdit, onDelete }: WardrobeGalleryProp
           imageUrl={imageUrls[item.id] || null}
           onEdit={onEdit}
           onDelete={onDelete}
+          onView={onView}
         />
       ))}
     </div>

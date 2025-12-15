@@ -72,7 +72,7 @@ interface EditClothingDialogProps {
   item: ClothingItem | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onUpdate: (id: string, updates: Partial<ClothingItemInput>) => Promise<void>;
+  onUpdate: (id: string, updates: Partial<ClothingItemInput>) => Promise<any>;
 }
 
 export function EditClothingDialog({
@@ -98,7 +98,7 @@ export function EditClothingDialog({
   // Reset size when switching between footwear and regular clothing
   useEffect(() => {
     if (type && size) {
-      const isSizeValid = availableSizes.includes(size as any);
+      const isSizeValid = availableSizes.some((s) => s === (size as any));
       if (!isSizeValid) {
         // Set default size based on type
         setSize(showingShoeSizes ? '40' : 'M');
