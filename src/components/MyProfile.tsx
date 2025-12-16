@@ -11,27 +11,38 @@ import {
 } from '@/components/ui/select';
 import { SHOE_SIZES, REGULAR_SIZES } from '@/types/clothing';
 import { UserProfile } from '@/types/profile';
-import { profileStorage } from '@/utils/profileStorage';
+import { saveUserProfile, getUserProfile } from '@/services/firestore';
+import { getCurrentUser } from '@/services/auth';
 
 export function MyProfile() {
   const [profile, setProfile] = useState<UserProfile>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log('MyProfile component mounted');
-    try {
-      profileStorage.getProfile().then((p) => {
-        console.log('Profile loaded:', p);
-        if (p) setProfile(p);
-      }).catch((err) => {
-        console.error('Error loading profile:', err);
-        setError('Failed to load profile');
-      });
-    } catch (err) {
-      console.error('Error in useEffect:', err);
-      setError('Error initializing profile');
-    }
+    const loadProfile = async () => {
+      try {
+        const user = getCurrentUser();
+        if (!user) {
+          setError('Not authenticated');
+          setIsLoading(false);
+          return;
+        }
+
+        const loadedProfile = await getUserProfile(user.uid);
+        if (loadedProfile) {
+          setProfile(loadedProfile);
+        }
+        setIsLoading(false);
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load profile';
+        setError(errorMessage);
+        setIsLoading(false);
+      }
+    };
+
+    loadProfile();
   }, []);
 
   const update = <K extends keyof UserProfile>(key: K, value: UserProfile[K]) => {
@@ -41,11 +52,18 @@ export function MyProfile() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await profileStorage.saveProfile(profile);
-      alert('Profile saved');
+      const user = getCurrentUser();
+      if (!user) {
+        setError('Not authenticated');
+        return;
+      }
+
+      await saveUserProfile(user.uid, profile);
+      alert('Profile saved successfully!');
     } catch (err) {
-      console.error(err);
-      alert('Failed to save profile');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save profile';
+      setError(errorMessage);
+      alert(errorMessage);
     } finally {
       setIsSaving(false);
     }
@@ -53,9 +71,16 @@ export function MyProfile() {
 
   const handleClear = async () => {
     if (!confirm('Clear profile?')) return;
-    await profileStorage.clearProfile();
     setProfile({});
   };
+
+  if (isLoading) {
+    return (
+      <div className="w-full text-center py-8">
+        <p className="text-gray-600">Loading profile...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full">

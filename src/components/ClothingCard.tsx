@@ -69,19 +69,19 @@ export function ClothingCard({ item, imageUrl, onEdit, onDelete, onView }: Cloth
       </div>
 
       {/* Item Details */}
-      <CardContent className="p-4">
-        <h3 className="font-semibold text-lg mb-1 truncate">{item.brand}</h3>
-        <p className="text-sm text-gray-600 mb-2">{item.type}</p>
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-500">{item.size}</span>
-          <span className="text-gray-500">{item.color}</span>
+      <CardContent className="p-2 sm:p-4">
+        <h3 className="font-semibold text-xs sm:text-sm mb-1 truncate">{item.brand}</h3>
+        <p className="text-xs text-gray-600 mb-1 truncate">{item.type}</p>
+        <div className="flex items-center justify-between text-xs gap-1">
+          <span className="text-gray-500 truncate">{item.size}</span>
+          <span className="text-gray-500 truncate">{item.color}</span>
         </div>
       </CardContent>
 
-      <CardFooter className="px-4 pb-4 pt-0">
+      <CardFooter className="px-2 py-2 sm:px-4 sm:pb-4 pt-0">
         <div className="w-full flex items-center justify-between">
-          <span className="font-semibold text-lg text-green-600">${item.cost.toFixed(2)}</span>
-          <span className="text-xs text-gray-400">
+          <span className="font-semibold text-sm sm:text-lg text-green-600">${item.cost.toFixed(2)}</span>
+          <span className="text-xs text-gray-400 hidden sm:inline">
             {new Date(item.dateAdded).toLocaleDateString()}
           </span>
         </div>

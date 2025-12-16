@@ -1,5 +1,7 @@
-import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, LogOut } from 'lucide-react';
+import { LoginPage } from './components/LoginPage';
+import { SignupPage } from './components/SignupPage';
 import { AddClothingForm } from './components/AddClothingForm';
 import { WardrobeGallery } from './components/WardrobeGallery';
 import { MyProfile } from './components/MyProfile';
@@ -15,9 +17,34 @@ import {
 } from './components/ui/dialog';
 import { useWardrobe } from './hooks/useWardrobe';
 import { ClothingItem } from './types/clothing';
+import { LoginCredentials, SignupCredentials } from './types/auth';
+import { onAuthStateChange, logout as firebaseLogout } from './services/auth';
 import './App.css';
 
 function App() {
+  // Auth state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<{ email: string; uid: string } | null>(null);
+  const [authPage, setAuthPage] = useState<'login' | 'signup'>('login');
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // Set up Firebase auth state listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChange((user) => {
+      if (user) {
+        setCurrentUser(user as { email: string; uid: string });
+        setIsAuthenticated(true);
+      } else {
+        setCurrentUser(null);
+        setIsAuthenticated(false);
+      }
+      setAuthLoading(false);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  // Wardrobe state
   const { items, loading, error, addItem, updateItem, deleteItem } = useWardrobe();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingItem, setEditingItem] = useState<ClothingItem | null>(null);
@@ -25,6 +52,29 @@ function App() {
   const [selectedItem, setSelectedItem] = useState<ClothingItem | null>(null);
   const [filterType, setFilterType] = useState<string | 'All'>('All');
   const [filterBrand, setFilterBrand] = useState<string | 'All'>('All');
+
+  // Auth handlers
+  const handleLogin = (credentials: LoginCredentials) => {
+    // Login will be handled by Firebase auth state change listener
+    console.log('Attempting login:', credentials.email);
+  };
+
+  const handleSignup = (credentials: SignupCredentials) => {
+    // Signup will be handled by Firebase auth state change listener
+    console.log('Attempting signup:', credentials.email);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await firebaseLogout();
+      setIsAuthenticated(false);
+      setCurrentUser(null);
+      setAuthPage('login');
+      setActivePage('wardrobe');
+    } catch (err) {
+      console.error('Logout failed:', err);
+    }
+  };
 
   // Compute available filter options from items
   const types = Array.from(new Set(items.map((i) => i.type))).sort();
@@ -38,14 +88,29 @@ function App() {
     setEditingItem(item);
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="text-4xl mb-4">👔</div>
-          <p className="text-gray-600">Loading your wardrobe...</p>
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
+    );
+  }
+
+  // Show auth pages if not authenticated
+  if (!isAuthenticated) {
+    return authPage === 'login' ? (
+      <LoginPage
+        onSwitchToSignup={() => setAuthPage('signup')}
+        onLogin={handleLogin}
+      />
+    ) : (
+      <SignupPage
+        onSwitchToLogin={() => setAuthPage('login')}
+        onSignup={handleSignup}
+      />
     );
   }
 
@@ -132,6 +197,15 @@ function App() {
                 onClick={() => setActivePage('profile')}
               >
                 👤 My Profile
+              </button>
+
+              <button
+                type="button"
+                className="text-sm text-gray-600 hover:text-gray-900 px-3 py-2 font-medium flex items-center gap-1"
+                onClick={handleLogout}
+              >
+                <LogOut className="h-4 w-4" />
+                <span className="hidden sm:inline">Logout</span>
               </button>
             </div>
           </div>
