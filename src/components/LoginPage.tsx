@@ -3,7 +3,7 @@ import { LoginCredentials, ValidationErrors } from '@/types/auth';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { login } from '@/services/auth';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface LoginPageProps {
   onSwitchToSignup: () => void;
@@ -11,6 +11,7 @@ interface LoginPageProps {
 }
 
 export function LoginPage({ onSwitchToSignup, onLogin }: LoginPageProps) {
+  const { login: loginUser } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -47,15 +48,15 @@ export function LoginPage({ onSwitchToSignup, onLogin }: LoginPageProps) {
 
     setIsLoading(true);
     try {
-      // Call Firebase login
-      await login(email, password);
+      // Call login from AuthContext
+      await loginUser(email, password);
       
       // Reset form
       setEmail('');
       setPassword('');
       setErrors({});
       
-      // onLogin callback will be triggered by App.tsx auth state change listener
+      // Call callback for any additional handling
       onLogin({ email, password });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Login failed. Please try again.';

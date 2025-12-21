@@ -132,7 +132,8 @@ export function AddClothingForm({ onSubmit, onCancel }: AddClothingFormProps) {
       setNotes('');
     } catch (error) {
       console.error('Error submitting form:', error);
-      alert('Failed to add item. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to add item. Please try again.';
+      alert(`Failed to add item: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
     }

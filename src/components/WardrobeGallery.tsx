@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ClothingCard } from './ClothingCard';
 import { ClothingItem } from '@/types/clothing';
-import { storageService } from '@/utils/storage';
+import { wardrobeStorageService } from '@/services/wardrobeStorage';
 
 interface WardrobeGalleryProps {
   items: ClothingItem[];
@@ -19,7 +19,8 @@ export function WardrobeGallery({ items, onEdit, onDelete, onView }: WardrobeGal
       const urls: Record<string, string | null> = {};
 
       for (const item of items) {
-        const url = await storageService.getImageUrl(item.imageId);
+        // For Firebase Storage, imageId contains the URL directly
+        const url = await wardrobeStorageService.getImageUrl(item.imageId);
         urls[item.id] = url;
       }
 

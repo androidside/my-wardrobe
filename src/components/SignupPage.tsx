@@ -3,7 +3,7 @@ import { SignupCredentials, ValidationErrors } from '@/types/auth';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { signup } from '@/services/auth';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SignupPageProps {
   onSwitchToLogin: () => void;
@@ -11,6 +11,7 @@ interface SignupPageProps {
 }
 
 export function SignupPage({ onSwitchToLogin, onSignup }: SignupPageProps) {
+  const { signup: signupUser } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -57,8 +58,8 @@ export function SignupPage({ onSwitchToLogin, onSignup }: SignupPageProps) {
 
     setIsLoading(true);
     try {
-      // Call Firebase signup
-      await signup(email, password);
+      // Call signup from AuthContext
+      await signupUser(email, password);
       
       // Reset form
       setEmail('');
@@ -66,7 +67,7 @@ export function SignupPage({ onSwitchToLogin, onSignup }: SignupPageProps) {
       setConfirmPassword('');
       setErrors({});
       
-      // onSignup callback will be triggered by App.tsx auth state change listener
+      // Call callback for any additional handling
       onSignup({ email, password, confirmPassword });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Signup failed. Please try again.';

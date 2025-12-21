@@ -36,17 +36,32 @@ const getStorageErrorMessage = (error: StorageError): string => {
 
 export const uploadImage = async (userId: string, itemId: string, file: File): Promise<string> => {
   try {
+    if (!storage) {
+      throw new Error('Firebase Storage is not initialized. Check your Firebase configuration.');
+    }
+
     const timestamp = Date.now();
     const fileName = `${itemId}_${timestamp}_${file.name}`;
-    const storageRef = ref(storage, `users/${userId}/items/${itemId}/${fileName}`);
+    const storagePath = `users/${userId}/items/${itemId}/${fileName}`;
+    const storageRef = ref(storage, storagePath);
+
+    console.log('Uploading image to Firebase Storage:', { storagePath, fileSize: file.size, fileType: file.type });
 
     const snapshot = await uploadBytes(storageRef, file);
     const downloadURL = await getDownloadURL(snapshot.ref);
 
+    console.log('Image uploaded successfully:', downloadURL);
     return downloadURL;
   } catch (error) {
+    console.error('Error uploading image:', error);
     const storageError = error as StorageError;
-    throw new Error(getStorageErrorMessage(storageError));
+    const errorMessage = getStorageErrorMessage(storageError);
+    console.error('Storage error details:', {
+      code: storageError.code,
+      message: storageError.message,
+      serverResponse: storageError.serverResponse,
+    });
+    throw new Error(errorMessage);
   }
 };
 

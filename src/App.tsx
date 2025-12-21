@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Plus, LogOut } from 'lucide-react';
 import { LoginPage } from './components/LoginPage';
 import { SignupPage } from './components/SignupPage';
@@ -15,34 +15,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from './components/ui/dialog';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useWardrobe } from './hooks/useWardrobe';
 import { ClothingItem } from './types/clothing';
 import { LoginCredentials, SignupCredentials } from './types/auth';
-import { onAuthStateChange, logout as firebaseLogout } from './services/auth';
 import './App.css';
 
-function App() {
-  // Auth state
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentUser, setCurrentUser] = useState<{ email: string; uid: string } | null>(null);
+function AppContent() {
+  const { user, loading: authLoading, login, signup, logout } = useAuth();
   const [authPage, setAuthPage] = useState<'login' | 'signup'>('login');
-  const [authLoading, setAuthLoading] = useState(true);
-
-  // Set up Firebase auth state listener
-  useEffect(() => {
-    const unsubscribe = onAuthStateChange((user) => {
-      if (user) {
-        setCurrentUser(user as { email: string; uid: string });
-        setIsAuthenticated(true);
-      } else {
-        setCurrentUser(null);
-        setIsAuthenticated(false);
-      }
-      setAuthLoading(false);
-    });
-
-    return unsubscribe;
-  }, []);
 
   // Wardrobe state
   const { items, loading, error, addItem, updateItem, deleteItem } = useWardrobe();
@@ -54,21 +35,27 @@ function App() {
   const [filterBrand, setFilterBrand] = useState<string | 'All'>('All');
 
   // Auth handlers
-  const handleLogin = (credentials: LoginCredentials) => {
-    // Login will be handled by Firebase auth state change listener
-    console.log('Attempting login:', credentials.email);
+  const handleLogin = async (credentials: LoginCredentials) => {
+    try {
+      await login(credentials.email, credentials.password);
+    } catch (err) {
+      // Error is handled by LoginPage component
+      console.error('Login failed:', err);
+    }
   };
 
-  const handleSignup = (credentials: SignupCredentials) => {
-    // Signup will be handled by Firebase auth state change listener
-    console.log('Attempting signup:', credentials.email);
+  const handleSignup = async (credentials: SignupCredentials) => {
+    try {
+      await signup(credentials.email, credentials.password);
+    } catch (err) {
+      // Error is handled by SignupPage component
+      console.error('Signup failed:', err);
+    }
   };
 
   const handleLogout = async () => {
     try {
-      await firebaseLogout();
-      setIsAuthenticated(false);
-      setCurrentUser(null);
+      await logout();
       setAuthPage('login');
       setActivePage('wardrobe');
     } catch (err) {
@@ -100,7 +87,7 @@ function App() {
   }
 
   // Show auth pages if not authenticated
-  if (!isAuthenticated) {
+  if (!user) {
     return authPage === 'login' ? (
       <LoginPage
         onSwitchToSignup={() => setAuthPage('signup')}
@@ -271,6 +258,14 @@ function App() {
         <Plus className="h-6 w-6" />
       </Button>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 

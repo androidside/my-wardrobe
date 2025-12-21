@@ -1,83 +1,104 @@
-import { useEffect, useState } from 'react';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { SHOE_SIZES, REGULAR_SIZES } from '@/types/clothing';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { UserProfile } from '@/types/profile';
-import { saveUserProfile, getUserProfile } from '@/services/firestore';
-import { getCurrentUser } from '@/services/auth';
+import { getUserProfile, saveUserProfile } from '@/services/firestore';
+import { useAuth } from '@/contexts/AuthContext';
+import { SHOE_SIZES, REGULAR_SIZES } from '@/types/clothing';
 
 export function MyProfile() {
-  const [profile, setProfile] = useState<UserProfile>({});
-  const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
+  const [profile, setProfile] = useState<UserProfile>({
+    fullName: '',
+    shoeSize: '',
+    pantsSizeUs: '',
+    heightCm: undefined,
+    weightKg: undefined,
+    headSizeCm: undefined,
+    generalSize: undefined,
+    notes: '',
+  });
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const loadProfile = async () => {
       try {
-        const user = getCurrentUser();
+        setLoading(true);
+        setError(null);
+        
+        console.log('MyProfile: Current user from context:', user);
+        
         if (!user) {
-          setError('Not authenticated');
-          setIsLoading(false);
+          setError('No user logged in');
+          setLoading(false);
           return;
         }
 
-        const loadedProfile = await getUserProfile(user.uid);
-        if (loadedProfile) {
-          setProfile(loadedProfile);
+        const userProfile = await getUserProfile(user.uid);
+        if (userProfile) {
+          setProfile(userProfile);
         }
-        setIsLoading(false);
+        setLoading(false);
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to load profile';
-        setError(errorMessage);
-        setIsLoading(false);
+        console.error('Error loading profile:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load profile');
+        setLoading(false);
       }
     };
 
     loadProfile();
-  }, []);
+  }, [user]);
 
-  const update = <K extends keyof UserProfile>(key: K, value: UserProfile[K]) => {
-    setProfile((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const handleSave = async () => {
-    setIsSaving(true);
+  const handleSaveProfile = async () => {
     try {
-      const user = getCurrentUser();
+      setSaving(true);
+      setError(null);
+      setSuccessMessage(null);
+
       if (!user) {
-        setError('Not authenticated');
+        setError('No user logged in');
         return;
       }
 
       await saveUserProfile(user.uid, profile);
-      alert('Profile saved successfully!');
+      setSuccessMessage('Profile saved successfully!');
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to save profile';
-      setError(errorMessage);
-      alert(errorMessage);
+      console.error('Error saving profile:', err);
+      setError(err instanceof Error ? err.message : 'Failed to save profile. Please try again.');
     } finally {
-      setIsSaving(false);
+      setSaving(false);
     }
   };
 
-  const handleClear = async () => {
-    if (!confirm('Clear profile?')) return;
-    setProfile({});
+  const handleClearProfile = () => {
+    setProfile({
+      fullName: '',
+      shoeSize: '',
+      pantsSizeUs: '',
+      heightCm: undefined,
+      weightKg: undefined,
+      headSizeCm: undefined,
+      generalSize: undefined,
+      notes: '',
+    });
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
-      <div className="w-full text-center py-8">
-        <p className="text-gray-600">Loading profile...</p>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading profile...</p>
+        </div>
       </div>
     );
   }
@@ -86,52 +107,58 @@ export function MyProfile() {
     <div className="w-full">
       <div className="bg-white rounded-lg shadow p-6 sm:p-8">
         <h2 className="text-2xl font-bold text-gray-900 mb-6">👤 Personal Information</h2>
-        
+
         {error && (
-          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
             {error}
+          </div>
+        )}
+
+        {successMessage && (
+          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded mb-6">
+            ✓ {successMessage}
           </div>
         )}
 
         <div className="space-y-5">
           <div>
-            <Label htmlFor="fullName" className="text-sm font-medium text-gray-700 block mb-1">Full name</Label>
+            <Label htmlFor="fullName" className="text-sm font-medium text-gray-700 block mb-1">Full Name</Label>
             <Input
               id="fullName"
-              value={profile.fullName || ''}
-              onChange={(e) => update('fullName', e.target.value)}
+              type="text"
               placeholder="Enter your full name"
+              value={profile.fullName || ''}
+              onChange={(e) => setProfile({ ...profile, fullName: e.target.value })}
               className="mt-1"
             />
           </div>
 
           <div>
-            <Label htmlFor="shoeSize" className="text-sm font-medium text-gray-700 block mb-1">Shoe size (EU)</Label>
-            <Select
-              value={profile.shoeSize || ''}
-              onValueChange={(v) => update('shoeSize', v || undefined)}
+            <Label htmlFor="shoeSize" className="text-sm font-medium text-gray-700 block mb-1">Shoe Size (EU)</Label>
+            <Select 
+              value={profile.shoeSize || ''} 
+              onValueChange={(value) => setProfile({ ...profile, shoeSize: value })}
             >
-              <SelectTrigger id="shoeSize" className="mt-1 w-full sm:w-48 h-9">
+              <SelectTrigger id="shoeSize" className="mt-1">
                 <SelectValue placeholder="Select shoe size" />
               </SelectTrigger>
               <SelectContent>
-                {SHOE_SIZES.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s}
-                  </SelectItem>
+                {SHOE_SIZES.map((size) => (
+                  <SelectItem key={size} value={size}>{size}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
           <div>
-            <Label htmlFor="pantsSize" className="text-sm font-medium text-gray-700 block mb-1">Pants size (US)</Label>
+            <Label htmlFor="pantsSize" className="text-sm font-medium text-gray-700 block mb-1">Pants Size (US)</Label>
             <Input
               id="pantsSize"
+              type="text"
+              placeholder="e.g., 32, 34, 36"
               value={profile.pantsSizeUs || ''}
-              onChange={(e) => update('pantsSizeUs', e.target.value)}
-              placeholder="e.g., 32, 34"
-              className="mt-1 w-full sm:w-40"
+              onChange={(e) => setProfile({ ...profile, pantsSizeUs: e.target.value })}
+              className="mt-1"
             />
           </div>
 
@@ -140,10 +167,10 @@ export function MyProfile() {
             <Input
               id="height"
               type="number"
-              value={profile.heightCm ?? ''}
-              onChange={(e) => update('heightCm', e.target.value ? Number(e.target.value) : undefined)}
               placeholder="e.g., 175"
-              className="mt-1 w-full sm:w-40"
+              value={profile.heightCm || ''}
+              onChange={(e) => setProfile({ ...profile, heightCm: e.target.value ? parseInt(e.target.value) : undefined })}
+              className="mt-1"
             />
           </div>
 
@@ -152,39 +179,37 @@ export function MyProfile() {
             <Input
               id="weight"
               type="number"
-              value={profile.weightKg ?? ''}
-              onChange={(e) => update('weightKg', e.target.value ? Number(e.target.value) : undefined)}
-              placeholder="e.g., 70"
-              className="mt-1 w-full sm:w-40"
+              placeholder="e.g., 75"
+              value={profile.weightKg || ''}
+              onChange={(e) => setProfile({ ...profile, weightKg: e.target.value ? parseInt(e.target.value) : undefined })}
+              className="mt-1"
             />
           </div>
 
           <div>
-            <Label htmlFor="headSize" className="text-sm font-medium text-gray-700 block mb-1">Head size (cm)</Label>
+            <Label htmlFor="headSize" className="text-sm font-medium text-gray-700 block mb-1">Head Size (cm)</Label>
             <Input
               id="headSize"
               type="number"
-              value={profile.headSizeCm ?? ''}
-              onChange={(e) => update('headSizeCm', e.target.value ? Number(e.target.value) : undefined)}
-              placeholder="e.g., 57"
-              className="mt-1 w-full sm:w-40"
+              placeholder="e.g., 58"
+              value={profile.headSizeCm || ''}
+              onChange={(e) => setProfile({ ...profile, headSizeCm: e.target.value ? parseInt(e.target.value) : undefined })}
+              className="mt-1"
             />
           </div>
 
           <div>
-            <Label htmlFor="generalSize" className="text-sm font-medium text-gray-700 block mb-1">General size</Label>
-            <Select
-              value={profile.generalSize || ''}
-              onValueChange={(v) => update('generalSize', v as any || undefined)}
+            <Label htmlFor="generalSize" className="text-sm font-medium text-gray-700 block mb-1">General Size</Label>
+            <Select 
+              value={profile.generalSize || ''} 
+              onValueChange={(value) => setProfile({ ...profile, generalSize: (value || undefined) as any })}
             >
-              <SelectTrigger id="generalSize" className="mt-1 w-full sm:w-40 h-9">
-                <SelectValue placeholder="Select size" />
+              <SelectTrigger id="generalSize" className="mt-1">
+                <SelectValue placeholder="Select general size" />
               </SelectTrigger>
               <SelectContent>
-                {REGULAR_SIZES.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s}
-                  </SelectItem>
+                {REGULAR_SIZES.map((size) => (
+                  <SelectItem key={size} value={size}>{size}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -192,31 +217,32 @@ export function MyProfile() {
 
           <div>
             <Label htmlFor="notes" className="text-sm font-medium text-gray-700 block mb-1">Notes</Label>
-            <Input
+            <textarea
               id="notes"
+              placeholder="Any additional notes about your preferences..."
               value={profile.notes || ''}
-              onChange={(e) => update('notes', e.target.value)}
-              placeholder="Any other measurements or notes"
-              className="mt-1"
+              onChange={(e) => setProfile({ ...profile, notes: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 mt-1"
+              rows={4}
             />
           </div>
+        </div>
 
-          <div className="flex gap-3 pt-4">
-            <Button 
-              onClick={handleSave} 
-              disabled={isSaving} 
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2"
-            >
-              {isSaving ? 'Saving...' : '✓ Save Profile'}
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={handleClear}
-              className="px-4 py-2"
-            >
-              Clear All
-            </Button>
-          </div>
+        <div className="flex gap-3 mt-8">
+          <Button 
+            onClick={handleSaveProfile} 
+            disabled={saving}
+            className="flex-1 bg-indigo-600 hover:bg-indigo-700"
+          >
+            {saving ? 'Saving...' : 'Save Profile'}
+          </Button>
+          <Button 
+            onClick={handleClearProfile}
+            variant="outline"
+            className="flex-1"
+          >
+            Clear All
+          </Button>
         </div>
       </div>
     </div>
