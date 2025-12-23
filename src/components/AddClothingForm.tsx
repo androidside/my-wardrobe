@@ -20,6 +20,9 @@ import {
   isFootwear,
   formatShoeSize,
 } from '@/types/clothing';
+import { useAuth } from '@/contexts/AuthContext';
+import { getUserProfile } from '@/services/firestore';
+import { UserProfile } from '@/types/profile';
 
 const CLOTHING_TYPES: ClothingType[] = [
   'T-shirt',
@@ -65,6 +68,7 @@ interface AddClothingFormProps {
 }
 
 export function AddClothingForm({ onSubmit, onCancel }: AddClothingFormProps) {
+  const { user } = useAuth();
   const [imageBlob, setImageBlob] = useState<Blob | null>(null);
   const [type, setType] = useState<ClothingType | ''>('');
   const [brand, setBrand] = useState('');
@@ -73,20 +77,91 @@ export function AddClothingForm({ onSubmit, onCancel }: AddClothingFormProps) {
   const [cost, setCost] = useState('');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+
+  // Load user profile on mount
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (user) {
+        try {
+          const profile = await getUserProfile(user.uid);
+          if (profile) {
+            setUserProfile(profile);
+          }
+        } catch (error) {
+          console.error('Error loading user profile:', error);
+        }
+      }
+    };
+    loadProfile();
+  }, [user]);
 
   // Determine which sizes to show based on clothing type
   const showingShoeSizes = type && isFootwear(type);
+  const isPantsOrJeans = type === 'Pants' || type === 'Jeans';
   const availableSizes = showingShoeSizes ? SHOE_SIZES : REGULAR_SIZES;
 
-  // Reset size when switching between footwear and regular clothing
+  // Pre-populate size based on user profile when type changes
   useEffect(() => {
-    if (type && size) {
-      const isSizeValid = availableSizes.includes(size as any);
-      if (!isSizeValid) {
-        setSize('');
+    if (type && userProfile) {
+      const isFootwearType = isFootwear(type);
+      const isPantsType = type === 'Pants' || type === 'Jeans';
+      
+      // Only pre-populate if size field is empty
+      if (!size) {
+        if (isFootwearType) {
+          // For footwear, use shoeSize from profile
+          if (userProfile.shoeSize && SHOE_SIZES.includes(userProfile.shoeSize as any)) {
+            setSize(userProfile.shoeSize as ClothingSize);
+          }
+        } else if (isPantsType) {
+          // For pants/jeans, use pantsSizeUs from profile
+          if (userProfile.pantsSizeUs) {
+            setSize(userProfile.pantsSizeUs as ClothingSize);
+          }
+        } else {
+          // For other regular clothing, use generalSize from profile
+          if (userProfile.generalSize && REGULAR_SIZES.includes(userProfile.generalSize as any)) {
+            setSize(userProfile.generalSize as ClothingSize);
+          }
+        }
+      } else {
+        // If size is already set, validate it for the current type
+        const isFootwearType = isFootwear(type);
+        const isPantsType = type === 'Pants' || type === 'Jeans';
+        
+        if (isFootwearType && !SHOE_SIZES.includes(size as any)) {
+          // Size is invalid for footwear, clear it
+          setSize('');
+        } else if (!isFootwearType && !isPantsType && !REGULAR_SIZES.includes(size as any)) {
+          // Size is invalid for regular clothing (not pants), clear it
+          setSize('');
+        }
+        // For pants, any string is valid, so we don't clear it
       }
     }
-  }, [type]);
+  }, [type, userProfile]); // Only depend on type and userProfile
+
+  // Reset size when switching between different size types (if size is invalid)
+  useEffect(() => {
+    if (type && size) {
+      const isFootwearType = isFootwear(type);
+      const isPantsType = type === 'Pants' || type === 'Jeans';
+      
+      if (isFootwearType) {
+        // For footwear, size must be from SHOE_SIZES
+        if (!SHOE_SIZES.includes(size as any)) {
+          setSize('');
+        }
+      } else if (!isPantsType) {
+        // For regular clothing (not pants), size must be from REGULAR_SIZES
+        if (!REGULAR_SIZES.includes(size as any)) {
+          setSize('');
+        }
+      }
+      // For pants, any string is valid, so we don't clear it
+    }
+  }, [type, size]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -185,20 +260,36 @@ export function AddClothingForm({ onSubmit, onCancel }: AddClothingFormProps) {
       {/* Size */}
       <div>
         <Label htmlFor="size" className="text-base">
-          {showingShoeSizes ? 'Size (European) *' : 'Size *'}
+          {showingShoeSizes 
+            ? 'Size (European) *' 
+            : isPantsOrJeans 
+            ? 'Pants Size (US) *' 
+            : 'Size *'}
         </Label>
-        <Select value={size} onValueChange={(value) => setSize(value as ClothingSize)}>
-          <SelectTrigger id="size" className="mt-1">
-            <SelectValue placeholder={showingShoeSizes ? "Select shoe size" : "Select size"} />
-          </SelectTrigger>
-          <SelectContent>
-            {availableSizes.map((s) => (
-              <SelectItem key={s} value={s}>
-                {showingShoeSizes ? formatShoeSize(s as any) : s}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {isPantsOrJeans ? (
+          <Input
+            id="size"
+            type="text"
+            value={size}
+            onChange={(e) => setSize(e.target.value as ClothingSize)}
+            placeholder="e.g., 32, 34, 36, M, L"
+            required
+            className="mt-1"
+          />
+        ) : (
+          <Select value={size} onValueChange={(value) => setSize(value as ClothingSize)}>
+            <SelectTrigger id="size" className="mt-1">
+              <SelectValue placeholder={showingShoeSizes ? "Select shoe size" : "Select size"} />
+            </SelectTrigger>
+            <SelectContent>
+              {availableSizes.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {showingShoeSizes ? formatShoeSize(s as any) : s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Color */}
