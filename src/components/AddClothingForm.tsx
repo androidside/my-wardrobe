@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { PhotoCapture } from './PhotoCapture';
+import { AnalysisResultDialog } from './AnalysisResultDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,6 +24,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { getUserProfile } from '@/services/firestore';
 import { UserProfile } from '@/types/profile';
+import { ClothingAnalysis } from '@/services/imageAnalysis';
 
 const CLOTHING_TYPES: ClothingType[] = [
   'T-shirt',
@@ -77,7 +79,10 @@ export function AddClothingForm({ onSubmit, onCancel }: AddClothingFormProps) {
   const [cost, setCost] = useState('');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<ClothingAnalysis | null>(null);
+  const [showAnalysisDialog, setShowAnalysisDialog] = useState(false);
 
   // Load user profile on mount
   useEffect(() => {
@@ -163,6 +168,89 @@ export function AddClothingForm({ onSubmit, onCancel }: AddClothingFormProps) {
     }
   }, [type, size]);
 
+  // Helper function to match detected type to ClothingType enum
+  const matchClothingType = (detectedType: string): ClothingType | null => {
+    const typeMap: Record<string, ClothingType> = {
+      'T-shirt': 'T-shirt',
+      'Shirt': 'Shirt',
+      'Jacket': 'Jacket',
+      'Coat': 'Coat',
+      'Sweater': 'Sweater',
+      'Hoodie': 'Hoodie',
+      'Pants': 'Pants',
+      'Jeans': 'Jeans',
+      'Shorts': 'Shorts',
+      'Skirt': 'Skirt',
+      'Dress': 'Dress',
+      'Shoes': 'Shoes',
+      'Sneakers': 'Sneakers',
+      'Boots': 'Boots',
+      'Sandals': 'Sandals',
+      'Accessories': 'Accessories',
+      'Other': 'Other',
+    };
+    return typeMap[detectedType] || null;
+  };
+
+  // Helper function to match detected color to ClothingColor enum
+  const matchColor = (detectedColor: string): ClothingColor | null => {
+    const colorMap: Record<string, ClothingColor> = {
+      'Black': 'Black',
+      'White': 'White',
+      'Gray': 'Gray',
+      'Navy': 'Navy',
+      'Blue': 'Blue',
+      'Red': 'Red',
+      'Green': 'Green',
+      'Yellow': 'Yellow',
+      'Orange': 'Orange',
+      'Pink': 'Pink',
+      'Purple': 'Purple',
+      'Brown': 'Brown',
+      'Beige': 'Beige',
+    };
+    return colorMap[detectedColor] || null;
+  };
+
+  // Handler for analysis results
+  const handleAnalysisComplete = (analysis: ClothingAnalysis) => {
+    console.log('[AddClothingForm] handleAnalysisComplete called with:', analysis);
+    setIsAnalyzing(false);
+    
+    // Store analysis result and show dialog
+    setAnalysisResult(analysis);
+    setShowAnalysisDialog(true);
+
+    // Auto-fill type if detected and field is empty (type doesn't have options, so auto-fill it)
+    if (analysis.type && !type) {
+      console.log('[AddClothingForm] Attempting to match type:', analysis.type);
+      const matchedType = matchClothingType(analysis.type);
+      console.log('[AddClothingForm] Matched type:', matchedType);
+      if (matchedType) {
+        console.log('[AddClothingForm] Setting type to:', matchedType);
+        setType(matchedType);
+      }
+    }
+  };
+
+  // Handler for when user selects options in the dialog
+  const handleSelection = (selections: { brand?: string; color?: string }) => {
+    console.log('[AddClothingForm] handleSelection called with:', selections);
+    
+    if (selections.brand && !brand) {
+      console.log('[AddClothingForm] Setting brand to:', selections.brand);
+      setBrand(selections.brand);
+    }
+    
+    if (selections.color) {
+      const matchedColor = matchColor(selections.color);
+      if (matchedColor && !color) {
+        console.log('[AddClothingForm] Setting color to:', matchedColor);
+        setColor(matchedColor);
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -219,7 +307,16 @@ export function AddClothingForm({ onSubmit, onCancel }: AddClothingFormProps) {
       {/* Photo Capture */}
       <div>
         <Label className="text-base mb-2 block">Photo *</Label>
-        <PhotoCapture onPhotoCapture={setImageBlob} />
+        <PhotoCapture 
+          onPhotoCapture={setImageBlob}
+          onAnalysisComplete={handleAnalysisComplete}
+          onAnalysisStart={() => setIsAnalyzing(true)}
+        />
+        {isAnalyzing && (
+          <div className="text-sm text-gray-500 text-center mt-2">
+            🔍 Analyzing image...
+          </div>
+        )}
       </div>
 
       {/* Clothing Type */}
@@ -355,6 +452,14 @@ export function AddClothingForm({ onSubmit, onCancel }: AddClothingFormProps) {
           {isSubmitting ? 'Adding...' : 'Add to Wardrobe'}
         </Button>
       </div>
+
+      {/* Analysis Result Dialog */}
+      <AnalysisResultDialog
+        open={showAnalysisDialog}
+        onOpenChange={setShowAnalysisDialog}
+        analysis={analysisResult}
+        onSelection={handleSelection}
+      />
     </form>
   );
 }

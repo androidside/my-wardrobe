@@ -1,15 +1,23 @@
 import { useState, useRef } from 'react';
 import { Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ClothingAnalysis, analyzeClothingImage } from '@/services/imageAnalysis';
 
 interface PhotoCaptureProps {
   onPhotoCapture: (blob: Blob) => void;
   initialPreview?: string | null;
+  onAnalysisComplete?: (analysis: ClothingAnalysis) => void;
+  onAnalysisStart?: () => void;
 }
 
-export function PhotoCapture({ onPhotoCapture, initialPreview }: PhotoCaptureProps) {
+export function PhotoCapture({ onPhotoCapture, initialPreview, onAnalysisComplete, onAnalysisStart }: PhotoCaptureProps) {
   const [preview, setPreview] = useState<string | null>(initialPreview || null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  console.log('[PhotoCapture] Component rendered with callbacks:', {
+    hasOnAnalysisComplete: !!onAnalysisComplete,
+    hasOnAnalysisStart: !!onAnalysisStart,
+  });
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -27,6 +35,24 @@ export function PhotoCapture({ onPhotoCapture, initialPreview }: PhotoCapturePro
 
     // Convert to blob and call callback
     onPhotoCapture(file);
+
+    // Trigger AI analysis if callbacks are provided
+    if (onAnalysisComplete) {
+      console.log('[PhotoCapture] Analysis callbacks provided, starting analysis...');
+      try {
+        onAnalysisStart?.();
+        console.log('[PhotoCapture] Analysis start callback called');
+        const analysis = await analyzeClothingImage(file);
+        console.log('[PhotoCapture] Analysis completed, result:', analysis);
+        onAnalysisComplete(analysis);
+        console.log('[PhotoCapture] Analysis complete callback called');
+      } catch (error) {
+        console.error('[PhotoCapture] AI analysis failed:', error);
+        // Silently fail - don't block user from continuing
+      }
+    } else {
+      console.log('[PhotoCapture] No analysis callbacks provided, skipping analysis');
+    }
   };
 
   const handleCameraClick = () => {
