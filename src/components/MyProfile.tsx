@@ -1,17 +1,30 @@
 import { useState, useEffect } from 'react';
+import { LogOut, Lock, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { UserProfile } from '@/types/profile';
 import { getUserProfile, saveUserProfile } from '@/services/firestore';
 import { useAuth } from '@/contexts/AuthContext';
+import { updateUserPassword } from '@/services/auth';
 import { SHOE_SIZES, REGULAR_SIZES } from '@/types/clothing';
 
 export function MyProfile() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [profile, setProfile] = useState<UserProfile>({
-    fullName: '',
+    firstName: '',
+    lastName: '',
+    dateOfBirth: '',
+    city: '',
+    country: '',
     shoeSize: '',
     pantsSizeUs: '',
     heightCm: undefined,
@@ -25,6 +38,12 @@ export function MyProfile() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -81,7 +100,11 @@ export function MyProfile() {
 
   const handleClearProfile = () => {
     setProfile({
-      fullName: '',
+      firstName: '',
+      lastName: '',
+      dateOfBirth: '',
+      city: '',
+      country: '',
       shoeSize: '',
       pantsSizeUs: '',
       heightCm: undefined,
@@ -90,6 +113,56 @@ export function MyProfile() {
       generalSize: undefined,
       notes: '',
     });
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (err) {
+      console.error('Logout failed:', err);
+    }
+  };
+
+  const handleUpdatePassword = async () => {
+    try {
+      setUpdatingPassword(true);
+      setPasswordError(null);
+
+      // Validation
+      if (!currentPassword || !newPassword || !confirmPassword) {
+        setPasswordError('All fields are required');
+        return;
+      }
+
+      if (newPassword.length < 6) {
+        setPasswordError('New password must be at least 6 characters');
+        return;
+      }
+
+      if (newPassword !== confirmPassword) {
+        setPasswordError('New passwords do not match');
+        return;
+      }
+
+      if (currentPassword === newPassword) {
+        setPasswordError('New password must be different from current password');
+        return;
+      }
+
+      await updateUserPassword(currentPassword, newPassword);
+      
+      // Success - clear form and close dialog
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setShowPasswordDialog(false);
+      setSuccessMessage('Password updated successfully!');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      setPasswordError(err instanceof Error ? err.message : 'Failed to update password');
+    } finally {
+      setUpdatingPassword(false);
+    }
   };
 
   if (loading) {
@@ -121,16 +194,79 @@ export function MyProfile() {
         )}
 
         <div className="space-y-5">
+          {/* Email Display (Read-only) */}
           <div>
-            <Label htmlFor="fullName" className="text-sm font-medium text-gray-700 block mb-1">Full Name</Label>
+            <Label className="text-sm font-medium text-gray-700 block mb-1">Email Address</Label>
+            <div className="flex items-center gap-2 mt-1 px-3 py-2 border border-gray-300 rounded-md bg-gray-50">
+              <Mail className="h-4 w-4 text-gray-500" />
+              <span className="text-sm text-gray-700">{user?.email || 'Not available'}</span>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Your email address cannot be changed</p>
+          </div>
+
+          {/* First Name and Last Name */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="firstName" className="text-sm font-medium text-gray-700 block mb-1">First Name</Label>
+              <Input
+                id="firstName"
+                type="text"
+                placeholder="John"
+                value={profile.firstName || ''}
+                onChange={(e) => setProfile({ ...profile, firstName: e.target.value })}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="lastName" className="text-sm font-medium text-gray-700 block mb-1">Last Name</Label>
+              <Input
+                id="lastName"
+                type="text"
+                placeholder="Doe"
+                value={profile.lastName || ''}
+                onChange={(e) => setProfile({ ...profile, lastName: e.target.value })}
+                className="mt-1"
+              />
+            </div>
+          </div>
+
+          {/* Date of Birth */}
+          <div>
+            <Label htmlFor="dateOfBirth" className="text-sm font-medium text-gray-700 block mb-1">Date of Birth</Label>
             <Input
-              id="fullName"
-              type="text"
-              placeholder="Enter your full name"
-              value={profile.fullName || ''}
-              onChange={(e) => setProfile({ ...profile, fullName: e.target.value })}
+              id="dateOfBirth"
+              type="date"
+              value={profile.dateOfBirth || ''}
+              onChange={(e) => setProfile({ ...profile, dateOfBirth: e.target.value })}
               className="mt-1"
+              max={new Date().toISOString().split('T')[0]}
             />
+          </div>
+
+          {/* City and Country */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="city" className="text-sm font-medium text-gray-700 block mb-1">City</Label>
+              <Input
+                id="city"
+                type="text"
+                placeholder="New York"
+                value={profile.city || ''}
+                onChange={(e) => setProfile({ ...profile, city: e.target.value })}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="country" className="text-sm font-medium text-gray-700 block mb-1">Country</Label>
+              <Input
+                id="country"
+                type="text"
+                placeholder="United States"
+                value={profile.country || ''}
+                onChange={(e) => setProfile({ ...profile, country: e.target.value })}
+                className="mt-1"
+              />
+            </div>
           </div>
 
           <div>
@@ -244,7 +380,117 @@ export function MyProfile() {
             Clear All
           </Button>
         </div>
+
+        {/* Password Update Section */}
+        <div className="mt-8 pt-8 border-t border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Security</h3>
+          <Button
+            onClick={() => setShowPasswordDialog(true)}
+            variant="outline"
+            className="w-full"
+          >
+            <Lock className="h-4 w-4 mr-2" />
+            Update Password
+          </Button>
+        </div>
+
+        {/* Logout Section */}
+        <div className="mt-6 pt-6 border-t border-gray-200">
+          <Button
+            onClick={handleLogout}
+            variant="outline"
+            className="w-full text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400"
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Logout
+          </Button>
+        </div>
       </div>
+
+      {/* Password Update Dialog */}
+      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Update Password</DialogTitle>
+            <DialogDescription>
+              Enter your current password and choose a new password
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 mt-4">
+            {passwordError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
+                {passwordError}
+              </div>
+            )}
+
+            <div>
+              <Label htmlFor="currentPassword" className="text-sm font-medium text-gray-700 block mb-1">
+                Current Password
+              </Label>
+              <Input
+                id="currentPassword"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="Enter current password"
+                className="mt-1"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="newPassword" className="text-sm font-medium text-gray-700 block mb-1">
+                New Password
+              </Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Enter new password (min. 6 characters)"
+                className="mt-1"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700 block mb-1">
+                Confirm New Password
+              </Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm new password"
+                className="mt-1"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-3 mt-6">
+            <Button
+              onClick={() => {
+                setShowPasswordDialog(false);
+                setCurrentPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
+                setPasswordError(null);
+              }}
+              variant="outline"
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdatePassword}
+              disabled={updatingPassword}
+              className="flex-1 bg-indigo-600 hover:bg-indigo-700"
+            >
+              {updatingPassword ? 'Updating...' : 'Update Password'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "generate:compatibility": "tsx scripts/generateCompatibilityMatrix.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
@@ -19,6 +20,7 @@
     "clsx": "^2.1.1",
     "firebase": "^12.7.0",
     "lucide-react": "^0.553.0",
+    "openai": "^6.15.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tailwind-merge": "^3.4.0",
@@ -33,12 +35,14 @@
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.22",
+    "dotenv": "^17.2.3",
     "eslint": "^9.17.0",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.16",
     "globals": "^15.14.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.0.0",
+    "tsx": "^4.21.0",
     "typescript": "~5.6.2",
     "typescript-eslint": "^8.18.2",
     "vite": "^6.0.7"

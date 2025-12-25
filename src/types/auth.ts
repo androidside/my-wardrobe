@@ -7,6 +7,13 @@ export interface SignupCredentials {
   email: string;
   password: string;
   confirmPassword: string;
+  profile: {
+    firstName: string;
+    lastName: string;
+    dateOfBirth: string;
+    city: string;
+    country: string;
+  };
 }
 
 export interface AuthUser {
@@ -18,4 +25,9 @@ export interface ValidationErrors {
   email?: string;
   password?: string;
   confirmPassword?: string;
+  firstName?: string;
+  lastName?: string;
+  dateOfBirth?: string;
+  city?: string;
+  country?: string;
 }

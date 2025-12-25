@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, LogOut } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus } from 'lucide-react';
 import { LoginPage } from './components/LoginPage';
 import { SignupPage } from './components/SignupPage';
 import { AddClothingForm } from './components/AddClothingForm';
@@ -7,6 +7,7 @@ import { WardrobeGallery } from './components/WardrobeGallery';
 import { MyProfile } from './components/MyProfile';
 import { ClothingDetailsDialog } from './components/ClothingDetailsDialog';
 import { EditClothingDialog } from './components/EditClothingDialog';
+import { BottomNavigation } from './components/BottomNavigation';
 import { Button } from './components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
 import {
@@ -16,9 +17,11 @@ import {
   DialogTitle,
 } from './components/ui/dialog';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { signup } from './services/auth';
 import { useWardrobe } from './hooks/useWardrobe';
-import { ClothingItem } from './types/clothing';
+import { ClothingItem, ClothingColor } from './types/clothing';
 import { LoginCredentials, SignupCredentials } from './types/auth';
+import { getUserProfile, saveUserProfile } from './services/firestore';
 import './App.css';
 
 function AppContent() {
@@ -29,10 +32,12 @@ function AppContent() {
   const { items, loading, error, addItem, updateItem, deleteItem } = useWardrobe();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingItem, setEditingItem] = useState<ClothingItem | null>(null);
-  const [activePage, setActivePage] = useState<'wardrobe' | 'profile'>('wardrobe');
+  const [activePage, setActivePage] = useState<'wardrobe' | 'fitting-room' | 'profile'>('wardrobe');
   const [selectedItem, setSelectedItem] = useState<ClothingItem | null>(null);
   const [filterType, setFilterType] = useState<string | 'All'>('All');
   const [filterBrand, setFilterBrand] = useState<string | 'All'>('All');
+  const [filterColor, setFilterColor] = useState<string | 'All'>('All');
+  const [userProfile, setUserProfile] = useState<{ fullName?: string } | null>(null);
 
   // Auth handlers
   const handleLogin = async (credentials: LoginCredentials) => {
@@ -46,30 +51,65 @@ function AppContent() {
 
   const handleSignup = async (credentials: SignupCredentials) => {
     try {
-      await signup(credentials.email, credentials.password);
+      // Sign up the user
+      const authUser = await signup(credentials.email, credentials.password);
+      
+      // Save the profile data immediately after signup
+      if (authUser && credentials.profile) {
+        try {
+          await saveUserProfile(authUser.uid, {
+            firstName: credentials.profile.firstName,
+            lastName: credentials.profile.lastName,
+            dateOfBirth: credentials.profile.dateOfBirth,
+            city: credentials.profile.city,
+            country: credentials.profile.country,
+          });
+          console.log('Profile saved successfully during signup');
+        } catch (profileError) {
+          console.error('Error saving profile during signup:', profileError);
+          // Don't fail the signup if profile save fails, but log it
+        }
+      }
     } catch (err) {
       // Error is handled by SignupPage component
       console.error('Signup failed:', err);
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      setAuthPage('login');
-      setActivePage('wardrobe');
-    } catch (err) {
-      console.error('Logout failed:', err);
+  const handleNavigate = (page: 'wardrobe' | 'fitting-room' | 'profile') => {
+    if (page === 'fitting-room') {
+      // Placeholder for future implementation
+      return;
     }
+    setActivePage(page);
   };
+
+  // Load user profile for header display
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      if (user) {
+        try {
+          const profile = await getUserProfile(user.uid);
+          if (profile) {
+            setUserProfile(profile);
+          }
+        } catch (err) {
+          console.error('Error loading user profile:', err);
+        }
+      }
+    };
+    loadUserProfile();
+  }, [user]);
 
   // Compute available filter options from items
   const types = Array.from(new Set(items.map((i) => i.type))).sort();
   const brands = Array.from(new Set(items.map((i) => i.brand))).filter(Boolean).sort();
+  const colors = Array.from(new Set(items.map((i) => i.color))).filter(Boolean).sort() as ClothingColor[];
 
   const filteredItems = items
     .filter((it) => (filterType === 'All' ? true : it.type === filterType))
-    .filter((it) => (filterBrand === 'All' ? true : it.brand === filterBrand));
+    .filter((it) => (filterBrand === 'All' ? true : it.brand === filterBrand))
+    .filter((it) => (filterColor === 'All' ? true : it.color === filterColor));
 
   const handleEdit = (item: ClothingItem) => {
     setEditingItem(item);
@@ -106,33 +146,46 @@ function AppContent() {
       {/* Header */}
       <header className="bg-white shadow sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
+          {activePage === 'profile' ? (
             <div>
-              {activePage === 'profile' ? (
-                <>
-                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">👤 My Profile</h1>
-                  <p className="text-sm text-gray-600 mt-1">Manage your personal information</p>
-                </>
-              ) : (
-                <>
-                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">👔 My Wardrobe</h1>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {filteredItems.length} {filteredItems.length === 1 ? 'item' : 'items'}{' '}
-                    {filterType !== 'All' && <span className="text-sm text-gray-500">— {filterType}</span>}
-                    {filterBrand !== 'All' && <span className="text-sm text-gray-500"> — {filterBrand}</span>}
-                    {filterType === 'All' && filterBrand === 'All' && (
-                      <span className="text-sm text-gray-500">in your collection</span>
-                    )}
-                  </p>
-                </>
-              )}
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">👤 My Profile</h1>
+              <p className="text-sm text-gray-600 mt-1">Manage your personal information</p>
             </div>
+          ) : activePage === 'fitting-room' ? (
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">🚪 My Fitting Room</h1>
+              <p className="text-sm text-gray-600 mt-1">Coming soon</p>
+            </div>
+          ) : (
+            <>
+              {/* Top row: Title and Item Count */}
+              <div className="flex items-start justify-between mb-3">
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+                  {userProfile?.firstName 
+                    ? `${userProfile.firstName}'s Wardrobe`
+                    : 'My Wardrobe'}
+                </h1>
+                <div className="text-right">
+                  <p className="text-sm text-gray-600">
+                    {filteredItems.length} {filteredItems.length === 1 ? 'item' : 'items'}
+                  </p>
+                  {(filterType !== 'All' || filterBrand !== 'All' || filterColor !== 'All') && (
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {filterType !== 'All' && <span>{filterType}</span>}
+                      {filterType !== 'All' && filterBrand !== 'All' && <span> • </span>}
+                      {filterBrand !== 'All' && <span>{filterBrand}</span>}
+                      {filterBrand !== 'All' && filterColor !== 'All' && <span> • </span>}
+                      {filterColor !== 'All' && <span>{filterColor}</span>}
+                    </p>
+                  )}
+                </div>
+              </div>
 
-            {activePage === 'wardrobe' && (
-              <div className="hidden sm:flex items-center gap-3 mr-4">
+              {/* Filters Row */}
+              <div className="flex items-center gap-2 sm:gap-3">
                 <Select value={filterType} onValueChange={(v) => setFilterType(v)}>
-                  <SelectTrigger className="w-48 h-9">
-                    <SelectValue placeholder="Filter by type" />
+                  <SelectTrigger className="w-24 sm:w-40 h-8 sm:h-9 text-xs sm:text-sm">
+                    <SelectValue placeholder="Type" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="All">All types</SelectItem>
@@ -145,8 +198,8 @@ function AppContent() {
                 </Select>
 
                 <Select value={filterBrand} onValueChange={(v) => setFilterBrand(v)}>
-                  <SelectTrigger className="w-44 h-9">
-                    <SelectValue placeholder="Filter by brand" />
+                  <SelectTrigger className="w-24 sm:w-40 h-8 sm:h-9 text-xs sm:text-sm">
+                    <SelectValue placeholder="Brand" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="All">All brands</SelectItem>
@@ -157,50 +210,28 @@ function AppContent() {
                     ))}
                   </SelectContent>
                 </Select>
+
+                <Select value={filterColor} onValueChange={(v) => setFilterColor(v)}>
+                  <SelectTrigger className="w-24 sm:w-36 h-8 sm:h-9 text-xs sm:text-sm">
+                    <SelectValue placeholder="Color" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">All colors</SelectItem>
+                    {colors.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            )}
-
-            <div className="flex items-center gap-3">
-              {activePage === 'profile' && (
-                <button
-                  className="text-sm text-indigo-600 hover:text-indigo-700 px-3 py-2 font-medium"
-                  onClick={() => setActivePage('wardrobe')}
-                >
-                  ← Back
-                </button>
-              )}
-
-              {activePage === 'wardrobe' && (
-                <Button onClick={() => setShowAddDialog(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Add New Item</span>
-                  <span className="sm:inline md:hidden">Add</span>
-                </Button>
-              )}
-
-              <button
-                type="button"
-                className="text-sm text-indigo-600 hover:text-indigo-700 px-3 py-2 font-medium"
-                onClick={() => setActivePage('profile')}
-              >
-                👤 My Profile
-              </button>
-
-              <button
-                type="button"
-                className="text-sm text-gray-600 hover:text-gray-900 px-3 py-2 font-medium flex items-center gap-1"
-                onClick={handleLogout}
-              >
-                <LogOut className="h-4 w-4" />
-                <span className="hidden sm:inline">Logout</span>
-              </button>
-            </div>
-          </div>
+            </>
+          )}
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+      <main className="max-w-7xl mx-auto px-4 py-8 pb-24 sm:px-6 lg:px-8">
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
             {error}
@@ -216,8 +247,28 @@ function AppContent() {
           />
         ) : activePage === 'profile' ? (
           <MyProfile />
+        ) : activePage === 'fitting-room' ? (
+          <div className="text-center py-16">
+            <div className="text-6xl mb-4">🚪</div>
+            <h3 className="text-xl font-semibold text-gray-700 mb-2">Fitting Room</h3>
+            <p className="text-gray-500">This feature is coming soon!</p>
+          </div>
         ) : null}
       </main>
+
+      {/* Bottom Navigation */}
+      <BottomNavigation activePage={activePage} onNavigate={handleNavigate} />
+
+      {/* Floating Action Button - Only visible on Wardrobe page */}
+      {activePage === 'wardrobe' && (
+        <Button
+          onClick={() => setShowAddDialog(true)}
+          className="fixed bottom-20 right-4 sm:right-6 h-14 w-14 rounded-full shadow-lg bg-indigo-600 hover:bg-indigo-700 text-white z-40 flex items-center justify-center p-0"
+          size="icon"
+        >
+          <Plus className="h-6 w-6" />
+        </Button>
+      )}
 
       <ClothingDetailsDialog
         item={selectedItem}
@@ -249,14 +300,6 @@ function AppContent() {
         onUpdate={updateItem}
       />
 
-      {/* Floating Action Button (Mobile) */}
-      <Button
-        onClick={() => setShowAddDialog(true)}
-        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg sm:hidden"
-        size="icon"
-      >
-        <Plus className="h-6 w-6" />
-      </Button>
     </div>
   );
 }

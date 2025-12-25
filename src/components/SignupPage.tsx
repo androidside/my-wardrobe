@@ -15,6 +15,11 @@ export function SignupPage({ onSwitchToLogin, onSignup }: SignupPageProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [city, setCity] = useState('');
+  const [country, setCountry] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<ValidationErrors>({});
 
@@ -45,6 +50,34 @@ export function SignupPage({ onSwitchToLogin, onSignup }: SignupPageProps) {
       newErrors.confirmPassword = 'Passwords do not match';
     }
 
+    // Personal information validation
+    if (!firstName.trim()) {
+      newErrors.firstName = 'First name is required';
+    }
+
+    if (!lastName.trim()) {
+      newErrors.lastName = 'Last name is required';
+    }
+
+    if (!dateOfBirth) {
+      newErrors.dateOfBirth = 'Date of birth is required';
+    } else {
+      // Validate date is not in the future
+      const birthDate = new Date(dateOfBirth);
+      const today = new Date();
+      if (birthDate > today) {
+        newErrors.dateOfBirth = 'Date of birth cannot be in the future';
+      }
+    }
+
+    if (!city.trim()) {
+      newErrors.city = 'City is required';
+    }
+
+    if (!country.trim()) {
+      newErrors.country = 'Country is required';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -61,14 +94,30 @@ export function SignupPage({ onSwitchToLogin, onSignup }: SignupPageProps) {
       // Call signup from AuthContext
       await signupUser(email, password);
       
+      // Call callback with profile data for saving
+      onSignup({ 
+        email, 
+        password, 
+        confirmPassword,
+        profile: {
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          dateOfBirth,
+          city: city.trim(),
+          country: country.trim(),
+        }
+      });
+      
       // Reset form
       setEmail('');
       setPassword('');
       setConfirmPassword('');
+      setFirstName('');
+      setLastName('');
+      setDateOfBirth('');
+      setCity('');
+      setCountry('');
       setErrors({});
-      
-      // Call callback for any additional handling
-      onSignup({ email, password, confirmPassword });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Signup failed. Please try again.';
       setErrors({ email: errorMessage });
@@ -78,8 +127,8 @@ export function SignupPage({ onSwitchToLogin, onSignup }: SignupPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-50 flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-50 flex items-center justify-center px-4 py-8">
+      <div className="w-full max-w-md max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="text-5xl mb-4">👔</div>
@@ -92,33 +141,155 @@ export function SignupPage({ onSwitchToLogin, onSignup }: SignupPageProps) {
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Create Account</h2>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Email Field */}
-            <div>
-              <Label htmlFor="email" className="text-sm font-medium text-gray-700 block mb-2">
-                Email Address
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (errors.email) setErrors({ ...errors, email: undefined });
-                }}
-                placeholder="you@example.com"
-                className={`w-full ${errors.email ? 'border-red-500' : ''}`}
-                disabled={isLoading}
-              />
-              {errors.email && (
-                <p className="text-red-500 text-sm mt-1">{errors.email}</p>
-              )}
+            {/* Personal Information Section */}
+            <div className="border-b border-gray-200 pb-4 mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h3>
+              
+              <div className="grid grid-cols-2 gap-4">
+                {/* First Name */}
+                <div>
+                  <Label htmlFor="firstName" className="text-sm font-medium text-gray-700 block mb-2">
+                    First Name *
+                  </Label>
+                  <Input
+                    id="firstName"
+                    type="text"
+                    value={firstName}
+                    onChange={(e) => {
+                      setFirstName(e.target.value);
+                      if (errors.firstName) setErrors({ ...errors, firstName: undefined });
+                    }}
+                    placeholder="John"
+                    className={`w-full ${errors.firstName ? 'border-red-500' : ''}`}
+                    disabled={isLoading}
+                  />
+                  {errors.firstName && (
+                    <p className="text-red-500 text-sm mt-1">{errors.firstName}</p>
+                  )}
+                </div>
+
+                {/* Last Name */}
+                <div>
+                  <Label htmlFor="lastName" className="text-sm font-medium text-gray-700 block mb-2">
+                    Last Name *
+                  </Label>
+                  <Input
+                    id="lastName"
+                    type="text"
+                    value={lastName}
+                    onChange={(e) => {
+                      setLastName(e.target.value);
+                      if (errors.lastName) setErrors({ ...errors, lastName: undefined });
+                    }}
+                    placeholder="Doe"
+                    className={`w-full ${errors.lastName ? 'border-red-500' : ''}`}
+                    disabled={isLoading}
+                  />
+                  {errors.lastName && (
+                    <p className="text-red-500 text-sm mt-1">{errors.lastName}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Date of Birth */}
+              <div className="mt-4">
+                <Label htmlFor="dateOfBirth" className="text-sm font-medium text-gray-700 block mb-2">
+                  Date of Birth *
+                </Label>
+                <Input
+                  id="dateOfBirth"
+                  type="date"
+                  value={dateOfBirth}
+                  onChange={(e) => {
+                    setDateOfBirth(e.target.value);
+                    if (errors.dateOfBirth) setErrors({ ...errors, dateOfBirth: undefined });
+                  }}
+                  className={`w-full ${errors.dateOfBirth ? 'border-red-500' : ''}`}
+                  disabled={isLoading}
+                  max={new Date().toISOString().split('T')[0]}
+                />
+                {errors.dateOfBirth && (
+                  <p className="text-red-500 text-sm mt-1">{errors.dateOfBirth}</p>
+                )}
+              </div>
+
+              {/* City and Country */}
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <div>
+                  <Label htmlFor="city" className="text-sm font-medium text-gray-700 block mb-2">
+                    City *
+                  </Label>
+                  <Input
+                    id="city"
+                    type="text"
+                    value={city}
+                    onChange={(e) => {
+                      setCity(e.target.value);
+                      if (errors.city) setErrors({ ...errors, city: undefined });
+                    }}
+                    placeholder="New York"
+                    className={`w-full ${errors.city ? 'border-red-500' : ''}`}
+                    disabled={isLoading}
+                  />
+                  {errors.city && (
+                    <p className="text-red-500 text-sm mt-1">{errors.city}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="country" className="text-sm font-medium text-gray-700 block mb-2">
+                    Country *
+                  </Label>
+                  <Input
+                    id="country"
+                    type="text"
+                    value={country}
+                    onChange={(e) => {
+                      setCountry(e.target.value);
+                      if (errors.country) setErrors({ ...errors, country: undefined });
+                    }}
+                    placeholder="United States"
+                    className={`w-full ${errors.country ? 'border-red-500' : ''}`}
+                    disabled={isLoading}
+                  />
+                  {errors.country && (
+                    <p className="text-red-500 text-sm mt-1">{errors.country}</p>
+                  )}
+                </div>
+              </div>
             </div>
 
-            {/* Password Field */}
-            <div>
-              <Label htmlFor="password" className="text-sm font-medium text-gray-700 block mb-2">
-                Password
-              </Label>
+            {/* Account Information Section */}
+            <div className="border-b border-gray-200 pb-4 mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Information</h3>
+              
+              {/* Email Field */}
+              <div>
+                <Label htmlFor="email" className="text-sm font-medium text-gray-700 block mb-2">
+                  Email Address *
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (errors.email) setErrors({ ...errors, email: undefined });
+                  }}
+                  placeholder="you@example.com"
+                  className={`w-full ${errors.email ? 'border-red-500' : ''}`}
+                  disabled={isLoading}
+                />
+                {errors.email && (
+                  <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+                )}
+              </div>
+
+              {/* Password Field */}
+              <div className="mt-4">
+                <Label htmlFor="password" className="text-sm font-medium text-gray-700 block mb-2">
+                  Password *
+                </Label>
               <Input
                 id="password"
                 type="password"
@@ -139,11 +310,11 @@ export function SignupPage({ onSwitchToLogin, onSignup }: SignupPageProps) {
               </p>
             </div>
 
-            {/* Confirm Password Field */}
-            <div>
-              <Label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700 block mb-2">
-                Confirm Password
-              </Label>
+              {/* Confirm Password Field */}
+              <div className="mt-4">
+                <Label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700 block mb-2">
+                  Confirm Password *
+                </Label>
               <Input
                 id="confirmPassword"
                 type="password"
@@ -159,6 +330,7 @@ export function SignupPage({ onSwitchToLogin, onSignup }: SignupPageProps) {
               {errors.confirmPassword && (
                 <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>
               )}
+              </div>
             </div>
 
             {/* Submit Button */}
