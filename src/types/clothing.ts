@@ -14,6 +14,8 @@ export type ClothingType =
   | 'Sneakers'
   | 'Boots'
   | 'Sandals'
+  | 'Hat'
+  | 'Underwear'
   | 'Accessories'
   | 'Other';
 
@@ -45,6 +47,9 @@ export type ClothingColor =
   | 'Multicolor'
   | 'Other';
 
+// Formality level: 1 = Very Informal, 5 = Very Formal
+export type FormalityLevel = 1 | 2 | 3 | 4 | 5;
+
 export interface ClothingItem {
   id: string;
   type: ClothingType;
@@ -52,6 +57,7 @@ export interface ClothingItem {
   size: ClothingSize;
   color: ClothingColor;
   cost: number;
+  formalityLevel?: FormalityLevel; // User-defined formality level (1-5), optional for backward compatibility
   imageId: string; // Reference to image stored in IndexedDB
   dateAdded: string; // ISO date string
   notes?: string; // Optional field for additional notes
@@ -63,6 +69,7 @@ export interface ClothingItemInput {
   size: ClothingSize;
   color: ClothingColor;
   cost: number;
+  formalityLevel: FormalityLevel; // User-defined formality level (1-5)
   imageBlob: Blob; // Image file to be stored
   notes?: string;
 }

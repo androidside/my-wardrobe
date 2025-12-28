@@ -25,18 +25,21 @@ export function BottomNavigation({ activePage, onNavigate }: BottomNavigationPro
               <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-12 h-1 bg-indigo-600 rounded-t-full" />
             )}
           </button>
-
-          {/* My Fitting Room (Placeholder) */}
+          {/* My Fitting Room */}
           <button
             onClick={() => onNavigate('fitting-room')}
-            disabled
-            className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 cursor-not-allowed opacity-50"
-            title="Coming soon"
+            className={`relative flex flex-col items-center justify-center flex-1 h-full transition-colors ${
+              activePage === 'fitting-room'
+                ? 'text-indigo-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
           >
-            <DoorOpen className="h-6 w-6 sm:h-5 sm:w-5" />
+            <DoorOpen className={`h-6 w-6 sm:h-5 sm:w-5 ${activePage === 'fitting-room' ? 'text-indigo-600' : ''}`} />
             <span className="text-xs sm:text-sm font-medium mt-1">Fitting Room</span>
+            {activePage === 'fitting-room' && (
+              <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-12 h-1 bg-indigo-600 rounded-t-full" />
+            )}
           </button>
-
           {/* My Profile */}
           <button
             onClick={() => onNavigate('profile')}

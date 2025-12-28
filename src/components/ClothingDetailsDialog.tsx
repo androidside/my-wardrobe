@@ -82,6 +82,17 @@ export function ClothingDetailsDialog({ item, open, onOpenChange }: ClothingDeta
                 <div><strong>Size:</strong> {item.size}</div>
                 <div><strong>Color:</strong> {item.color}</div>
                 <div><strong>Cost:</strong> ${item.cost.toFixed(2)}</div>
+                {item.formalityLevel && (
+                  <div>
+                    <strong>Formality:</strong> {
+                      item.formalityLevel === 1 && 'Very Informal'
+                      || item.formalityLevel === 2 && 'Informal'
+                      || item.formalityLevel === 3 && 'Casual'
+                      || item.formalityLevel === 4 && 'Formal'
+                      || item.formalityLevel === 5 && 'Very Formal'
+                    }
+                  </div>
+                )}
                 <div><strong>Added:</strong> {new Date(item.dateAdded).toLocaleString()}</div>
                 {item.notes && <div className="mt-2"><strong>Notes:</strong> {item.notes}</div>}
               </div>

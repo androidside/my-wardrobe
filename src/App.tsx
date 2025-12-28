@@ -22,6 +22,7 @@ import { useWardrobe } from './hooks/useWardrobe';
 import { ClothingItem, ClothingColor } from './types/clothing';
 import { LoginCredentials, SignupCredentials } from './types/auth';
 import { getUserProfile, saveUserProfile } from './services/firestore';
+import { FittingRoom } from './components/FittingRoom';
 import './App.css';
 
 function AppContent() {
@@ -61,6 +62,7 @@ function AppContent() {
             firstName: credentials.profile.firstName,
             lastName: credentials.profile.lastName,
             dateOfBirth: credentials.profile.dateOfBirth,
+            gender: credentials.profile.gender,
             city: credentials.profile.city,
             country: credentials.profile.country,
           });
@@ -77,10 +79,6 @@ function AppContent() {
   };
 
   const handleNavigate = (page: 'wardrobe' | 'fitting-room' | 'profile') => {
-    if (page === 'fitting-room') {
-      // Placeholder for future implementation
-      return;
-    }
     setActivePage(page);
   };
 
@@ -143,8 +141,8 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow sticky top-0 z-10">
+      {/* Header - Scrolls away */}
+      <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
           {activePage === 'profile' ? (
             <div>
@@ -154,81 +152,83 @@ function AppContent() {
           ) : activePage === 'fitting-room' ? (
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">🚪 My Fitting Room</h1>
-              <p className="text-sm text-gray-600 mt-1">Coming soon</p>
             </div>
           ) : (
-            <>
-              {/* Top row: Title and Item Count */}
-              <div className="flex items-start justify-between mb-3">
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-                  {userProfile?.firstName 
-                    ? `${userProfile.firstName}'s Wardrobe`
-                    : 'My Wardrobe'}
-                </h1>
-                <div className="text-right">
-                  <p className="text-sm text-gray-600">
-                    {filteredItems.length} {filteredItems.length === 1 ? 'item' : 'items'}
+            <div className="flex items-start justify-between">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+                {userProfile?.firstName 
+                  ? `${userProfile.firstName}'s Wardrobe`
+                  : 'My Wardrobe'}
+              </h1>
+              <div className="text-right">
+                <p className="text-sm text-gray-600">
+                  {filteredItems.length} {filteredItems.length === 1 ? 'item' : 'items'}
+                </p>
+                {(filterType !== 'All' || filterBrand !== 'All' || filterColor !== 'All') && (
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {filterType !== 'All' && <span>{filterType}</span>}
+                    {filterType !== 'All' && filterBrand !== 'All' && <span> • </span>}
+                    {filterBrand !== 'All' && <span>{filterBrand}</span>}
+                    {filterBrand !== 'All' && filterColor !== 'All' && <span> • </span>}
+                    {filterColor !== 'All' && <span>{filterColor}</span>}
                   </p>
-                  {(filterType !== 'All' || filterBrand !== 'All' || filterColor !== 'All') && (
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {filterType !== 'All' && <span>{filterType}</span>}
-                      {filterType !== 'All' && filterBrand !== 'All' && <span> • </span>}
-                      {filterBrand !== 'All' && <span>{filterBrand}</span>}
-                      {filterBrand !== 'All' && filterColor !== 'All' && <span> • </span>}
-                      {filterColor !== 'All' && <span>{filterColor}</span>}
-                    </p>
-                  )}
-                </div>
+                )}
               </div>
-
-              {/* Filters Row */}
-              <div className="flex items-center gap-2 sm:gap-3">
-                <Select value={filterType} onValueChange={(v) => setFilterType(v)}>
-                  <SelectTrigger className="w-24 sm:w-40 h-8 sm:h-9 text-xs sm:text-sm">
-                    <SelectValue placeholder="Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="All">All types</SelectItem>
-                    {types.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {t}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select value={filterBrand} onValueChange={(v) => setFilterBrand(v)}>
-                  <SelectTrigger className="w-24 sm:w-40 h-8 sm:h-9 text-xs sm:text-sm">
-                    <SelectValue placeholder="Brand" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="All">All brands</SelectItem>
-                    {brands.map((b) => (
-                      <SelectItem key={b} value={b}>
-                        {b}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select value={filterColor} onValueChange={(v) => setFilterColor(v)}>
-                  <SelectTrigger className="w-24 sm:w-36 h-8 sm:h-9 text-xs sm:text-sm">
-                    <SelectValue placeholder="Color" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="All">All colors</SelectItem>
-                    {colors.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {c}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </>
+            </div>
           )}
         </div>
       </header>
+
+      {/* Floating Filter Bar - Sticks to top when scrolling */}
+      {activePage === 'wardrobe' && (
+        <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Select value={filterType} onValueChange={(v) => setFilterType(v)}>
+                <SelectTrigger className="w-24 sm:w-40 h-8 sm:h-9 text-xs sm:text-sm">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All types</SelectItem>
+                  {types.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={filterBrand} onValueChange={(v) => setFilterBrand(v)}>
+                <SelectTrigger className="w-24 sm:w-40 h-8 sm:h-9 text-xs sm:text-sm">
+                  <SelectValue placeholder="Brand" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All brands</SelectItem>
+                  {brands.map((b) => (
+                    <SelectItem key={b} value={b}>
+                      {b}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={filterColor} onValueChange={(v) => setFilterColor(v)}>
+                <SelectTrigger className="w-24 sm:w-36 h-8 sm:h-9 text-xs sm:text-sm">
+                  <SelectValue placeholder="Color" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All colors</SelectItem>
+                  {colors.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-8 pb-24 sm:px-6 lg:px-8">
@@ -248,11 +248,7 @@ function AppContent() {
         ) : activePage === 'profile' ? (
           <MyProfile />
         ) : activePage === 'fitting-room' ? (
-          <div className="text-center py-16">
-            <div className="text-6xl mb-4">🚪</div>
-            <h3 className="text-xl font-semibold text-gray-700 mb-2">Fitting Room</h3>
-            <p className="text-gray-500">This feature is coming soon!</p>
-          </div>
+          <FittingRoom items={items} />
         ) : null}
       </main>
 
@@ -288,6 +284,7 @@ function AppContent() {
               setShowAddDialog(false);
             }}
             onCancel={() => setShowAddDialog(false)}
+            existingItems={items}
           />
         </DialogContent>
       </Dialog>
@@ -298,6 +295,7 @@ function AppContent() {
         open={!!editingItem}
         onOpenChange={(open) => !open && setEditingItem(null)}
         onUpdate={updateItem}
+        existingItems={items}
       />
 
     </div>

@@ -1,10 +1,13 @@
 export type GeneralSize = 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'Other';
 
+export type Gender = 'Male' | 'Female' | 'Other';
+
 export interface UserProfile {
   // Personal Information
   firstName?: string;
   lastName?: string;
   dateOfBirth?: string; // ISO date string (YYYY-MM-DD)
+  gender?: Gender;
   city?: string;
   country?: string;
   

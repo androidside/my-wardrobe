@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { PhotoCapture } from './PhotoCapture';
 import { AnalysisResultDialog } from './AnalysisResultDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
 import {
   Select,
   SelectContent,
@@ -16,6 +17,7 @@ import {
   ClothingType,
   ClothingSize,
   ClothingColor,
+  FormalityLevel,
   REGULAR_SIZES,
   SHOE_SIZES,
   isFootwear,
@@ -25,6 +27,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getUserProfile } from '@/services/firestore';
 import { UserProfile } from '@/types/profile';
 import { ClothingAnalysis } from '@/services/imageAnalysis';
+import { BRAND_LIST } from '@/data/brands';
 
 const CLOTHING_TYPES: ClothingType[] = [
   'T-shirt',
@@ -42,6 +45,8 @@ const CLOTHING_TYPES: ClothingType[] = [
   'Sneakers',
   'Boots',
   'Sandals',
+  'Hat',
+  'Underwear',
   'Accessories',
   'Other',
 ];
@@ -67,9 +72,10 @@ const COLORS: ClothingColor[] = [
 interface AddClothingFormProps {
   onSubmit: (item: ClothingItemInput) => Promise<void>;
   onCancel?: () => void;
+  existingItems?: Array<{ brand: string }>; // Optional: existing wardrobe items for brand suggestions
 }
 
-export function AddClothingForm({ onSubmit, onCancel }: AddClothingFormProps) {
+export function AddClothingForm({ onSubmit, onCancel, existingItems = [] }: AddClothingFormProps) {
   const { user } = useAuth();
   const [imageBlob, setImageBlob] = useState<Blob | null>(null);
   const [type, setType] = useState<ClothingType | ''>('');
@@ -77,12 +83,100 @@ export function AddClothingForm({ onSubmit, onCancel }: AddClothingFormProps) {
   const [size, setSize] = useState<ClothingSize | ''>('');
   const [color, setColor] = useState<ClothingColor | ''>('');
   const [cost, setCost] = useState('');
+  const [formalityLevel, setFormalityLevel] = useState<FormalityLevel>(3); // Default to middle (3)
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [analysisResult, setAnalysisResult] = useState<ClothingAnalysis | null>(null);
   const [showAnalysisDialog, setShowAnalysisDialog] = useState(false);
+  
+  // Brand autocomplete state
+  const [brandSuggestions, setBrandSuggestions] = useState<string[]>([]);
+  const [showBrandSuggestions, setShowBrandSuggestions] = useState(false);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
+  const brandInputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  // Filter brands based on input - combine BRAND_LIST with user's existing brands
+  useEffect(() => {
+    if (brand.trim().length > 0) {
+      // Get unique brands from existing items
+      const existingBrands = Array.from(new Set(
+        existingItems.map(item => item.brand).filter(Boolean)
+      ));
+      
+      // Combine with BRAND_LIST and remove duplicates
+      const allBrands = Array.from(new Set([...BRAND_LIST, ...existingBrands]));
+      
+      // Filter and sort: exact matches first, then partial matches
+      const lowerInput = brand.toLowerCase();
+      const filtered = allBrands
+        .filter(b => b.toLowerCase().includes(lowerInput))
+        .sort((a, b) => {
+          const aLower = a.toLowerCase();
+          const bLower = b.toLowerCase();
+          const aStarts = aLower.startsWith(lowerInput);
+          const bStarts = bLower.startsWith(lowerInput);
+          
+          if (aStarts && !bStarts) return -1;
+          if (!aStarts && bStarts) return 1;
+          return aLower.localeCompare(bLower);
+        })
+        .slice(0, 8); // Limit to 8 suggestions
+      
+      setBrandSuggestions(filtered);
+      setShowBrandSuggestions(filtered.length > 0);
+      setSelectedSuggestionIndex(-1);
+    } else {
+      setBrandSuggestions([]);
+      setShowBrandSuggestions(false);
+    }
+  }, [brand, existingItems]);
+
+  // Handle clicking outside to close suggestions
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        brandInputRef.current &&
+        !brandInputRef.current.contains(event.target as Node) &&
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(event.target as Node)
+      ) {
+        setShowBrandSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Handle keyboard navigation in suggestions
+  const handleBrandKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showBrandSuggestions || brandSuggestions.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedSuggestionIndex(prev => 
+        prev < brandSuggestions.length - 1 ? prev + 1 : prev
+      );
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedSuggestionIndex(prev => prev > 0 ? prev - 1 : -1);
+    } else if (e.key === 'Enter' && selectedSuggestionIndex >= 0) {
+      e.preventDefault();
+      setBrand(brandSuggestions[selectedSuggestionIndex]);
+      setShowBrandSuggestions(false);
+    } else if (e.key === 'Escape') {
+      setShowBrandSuggestions(false);
+    }
+  };
+
+  const handleBrandSelect = (selectedBrand: string) => {
+    setBrand(selectedBrand);
+    setShowBrandSuggestions(false);
+    brandInputRef.current?.focus();
+  };
 
   // Load user profile on mount
   useEffect(() => {
@@ -186,6 +280,7 @@ export function AddClothingForm({ onSubmit, onCancel }: AddClothingFormProps) {
       'Sneakers': 'Sneakers',
       'Boots': 'Boots',
       'Sandals': 'Sandals',
+      'Hat': 'Hat',
       'Accessories': 'Accessories',
       'Other': 'Other',
     };
@@ -279,6 +374,7 @@ export function AddClothingForm({ onSubmit, onCancel }: AddClothingFormProps) {
         size,
         color,
         cost: costNumber,
+        formalityLevel,
         imageBlob,
         notes: notes || undefined,
       };
@@ -292,6 +388,7 @@ export function AddClothingForm({ onSubmit, onCancel }: AddClothingFormProps) {
       setSize('');
       setColor('');
       setCost('');
+      setFormalityLevel(3);
       setNotes('');
     } catch (error) {
       console.error('Error submitting form:', error);
@@ -339,19 +436,46 @@ export function AddClothingForm({ onSubmit, onCancel }: AddClothingFormProps) {
       </div>
 
       {/* Brand */}
-      <div>
+      <div className="relative">
         <Label htmlFor="brand" className="text-base">
           Brand *
         </Label>
         <Input
+          ref={brandInputRef}
           id="brand"
           type="text"
           value={brand}
           onChange={(e) => setBrand(e.target.value)}
+          onFocus={() => {
+            if (brandSuggestions.length > 0) {
+              setShowBrandSuggestions(true);
+            }
+          }}
+          onKeyDown={handleBrandKeyDown}
           placeholder="e.g., Nike, Zara, H&M"
           required
           className="mt-1"
+          autoComplete="off"
         />
+        {showBrandSuggestions && brandSuggestions.length > 0 && (
+          <div
+            ref={suggestionsRef}
+            className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto"
+          >
+            {brandSuggestions.map((suggestion, index) => (
+              <button
+                key={suggestion}
+                type="button"
+                onClick={() => handleBrandSelect(suggestion)}
+                className={`w-full text-left px-3 py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none ${
+                  index === selectedSuggestionIndex ? 'bg-gray-100' : ''
+                }`}
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Size */}
@@ -424,6 +548,34 @@ export function AddClothingForm({ onSubmit, onCancel }: AddClothingFormProps) {
           required
           className="mt-1"
         />
+      </div>
+
+      {/* Formality Level */}
+      <div>
+        <Label className="text-base block mb-2">
+          Formality Level *
+        </Label>
+        <div className="space-y-2">
+          <Slider
+            value={[formalityLevel]}
+            onValueChange={(value: number[]) => setFormalityLevel(value[0] as FormalityLevel)}
+            min={1}
+            max={5}
+            step={1}
+            className="w-full"
+          />
+          <div className="flex justify-between text-xs text-gray-500 px-1">
+            <span>Very Informal</span>
+            <span className="font-medium text-gray-700">
+              {formalityLevel === 1 && 'Very Informal'}
+              {formalityLevel === 2 && 'Informal'}
+              {formalityLevel === 3 && 'Casual'}
+              {formalityLevel === 4 && 'Formal'}
+              {formalityLevel === 5 && 'Very Formal'}
+            </span>
+            <span>Very Formal</span>
+          </div>
+        </div>
       </div>
 
       {/* Notes (Optional) */}

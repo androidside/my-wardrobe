@@ -23,6 +23,7 @@ export function MyProfile() {
     firstName: '',
     lastName: '',
     dateOfBirth: '',
+    gender: undefined,
     city: '',
     country: '',
     shoeSize: '',
@@ -103,6 +104,7 @@ export function MyProfile() {
       firstName: '',
       lastName: '',
       dateOfBirth: '',
+      gender: undefined,
       city: '',
       country: '',
       shoeSize: '',
@@ -241,6 +243,24 @@ export function MyProfile() {
               className="mt-1"
               max={new Date().toISOString().split('T')[0]}
             />
+          </div>
+
+          {/* Gender */}
+          <div>
+            <Label htmlFor="gender" className="text-sm font-medium text-gray-700 block mb-1">Gender</Label>
+            <Select 
+              value={profile.gender || ''} 
+              onValueChange={(value) => setProfile({ ...profile, gender: (value || undefined) as 'Male' | 'Female' | 'Other' | undefined })}
+            >
+              <SelectTrigger id="gender" className="mt-1">
+                <SelectValue placeholder="Select gender" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Male">Male</SelectItem>
+                <SelectItem value="Female">Female</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* City and Country */}

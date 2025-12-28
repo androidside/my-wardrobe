@@ -3,6 +3,7 @@ import { SignupCredentials, ValidationErrors } from '@/types/auth';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface SignupPageProps {
@@ -18,6 +19,7 @@ export function SignupPage({ onSwitchToLogin, onSignup }: SignupPageProps) {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
+  const [gender, setGender] = useState<'Male' | 'Female' | 'Other' | ''>('');
   const [city, setCity] = useState('');
   const [country, setCountry] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -70,6 +72,10 @@ export function SignupPage({ onSwitchToLogin, onSignup }: SignupPageProps) {
       }
     }
 
+    if (!gender) {
+      newErrors.gender = 'Gender is required';
+    }
+
     if (!city.trim()) {
       newErrors.city = 'City is required';
     }
@@ -103,6 +109,7 @@ export function SignupPage({ onSwitchToLogin, onSignup }: SignupPageProps) {
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           dateOfBirth,
+          gender: gender as 'Male' | 'Female' | 'Other',
           city: city.trim(),
           country: country.trim(),
         }
@@ -115,6 +122,7 @@ export function SignupPage({ onSwitchToLogin, onSignup }: SignupPageProps) {
       setFirstName('');
       setLastName('');
       setDateOfBirth('');
+      setGender('');
       setCity('');
       setCountry('');
       setErrors({});
@@ -210,6 +218,36 @@ export function SignupPage({ onSwitchToLogin, onSignup }: SignupPageProps) {
                 />
                 {errors.dateOfBirth && (
                   <p className="text-red-500 text-sm mt-1">{errors.dateOfBirth}</p>
+                )}
+              </div>
+
+              {/* Gender */}
+              <div className="mt-4">
+                <Label htmlFor="gender" className="text-sm font-medium text-gray-700 block mb-2">
+                  Gender *
+                </Label>
+                <Select
+                  value={gender}
+                  onValueChange={(value) => {
+                    setGender(value as 'Male' | 'Female' | 'Other');
+                    if (errors.gender) setErrors({ ...errors, gender: undefined });
+                  }}
+                >
+                  <SelectTrigger 
+                    id="gender" 
+                    className={`w-full ${errors.gender ? 'border-red-500' : ''}`}
+                    disabled={isLoading}
+                  >
+                    <SelectValue placeholder="Select gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Male">Male</SelectItem>
+                    <SelectItem value="Female">Female</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.gender && (
+                  <p className="text-red-500 text-sm mt-1">{errors.gender}</p>
                 )}
               </div>
 

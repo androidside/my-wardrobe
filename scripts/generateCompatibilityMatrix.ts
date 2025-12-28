@@ -13,8 +13,8 @@ const __dirname = path.dirname(__filename);
 // Clothing types and colors from the application
 const CLOTHING_TYPES = [
   'T-shirt', 'Shirt', 'Jacket', 'Coat', 'Sweater', 'Hoodie',
-  'Pants', 'Jeans', 'Shorts', 'Skirt', 'Dress',
-  'Shoes', 'Sneakers', 'Boots', 'Sandals', 'Accessories', 'Other'
+  'Pants', 'Jeans', 'Shorts', 'Skirt', 'Dress', 'Underwear',
+  'Shoes', 'Sneakers', 'Boots', 'Sandals', 'Hat', 'Accessories', 'Other'
 ];
 
 const CLOTHING_COLORS = [

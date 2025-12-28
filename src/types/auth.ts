@@ -11,6 +11,7 @@ export interface SignupCredentials {
     firstName: string;
     lastName: string;
     dateOfBirth: string;
+    gender: 'Male' | 'Female' | 'Other';
     city: string;
     country: string;
   };
@@ -28,6 +29,7 @@ export interface ValidationErrors {
   firstName?: string;
   lastName?: string;
   dateOfBirth?: string;
+  gender?: string;
   city?: string;
   country?: string;
 }
