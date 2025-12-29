@@ -69,10 +69,10 @@ export function ClothingCard({ item, imageUrl, onEdit, onDelete, onView }: Cloth
       </div>
 
       {/* Item Details */}
-      <CardContent className="p-2 sm:p-3">
-        <h3 className="font-semibold text-xs mb-0.5 truncate">{item.brand}</h3>
-        <p className="text-xs text-gray-600 mb-1 truncate">{item.type}</p>
-        <div className="flex items-center justify-between text-xs gap-1">
+      <CardContent className="p-1.5 sm:p-2">
+        <h3 className="font-semibold text-[10px] sm:text-xs mb-0.5 truncate">{item.brand}</h3>
+        <p className="text-[10px] sm:text-xs text-gray-600 mb-0.5 truncate">{item.type}</p>
+        <div className="flex items-center justify-between text-[9px] sm:text-xs gap-1">
           <span className="text-gray-500 truncate">{item.size}</span>
           <span className="text-gray-500 truncate">{item.color}</span>
         </div>

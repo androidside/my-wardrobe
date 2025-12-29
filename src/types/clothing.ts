@@ -15,6 +15,7 @@ export type ClothingType =
   | 'Boots'
   | 'Sandals'
   | 'Hat'
+  | 'Socks'
   | 'Underwear'
   | 'Accessories'
   | 'Other';

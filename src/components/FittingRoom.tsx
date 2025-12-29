@@ -17,10 +17,10 @@ function getItemCategory(item: ClothingItem): 'top' | 'bottom' | 'footwear' | 'a
   if (FOOTWEAR_TYPES.includes(item.type)) {
     return 'footwear';
   }
-  if (['Pants', 'Jeans', 'Shorts', 'Skirt', 'Dress','Underwear'].includes(item.type)) {
+  if (['Pants', 'Jeans', 'Shorts', 'Skirt', 'Dress', 'Underwear'].includes(item.type)) {
     return 'bottom';
   }
-  if (['Hat', 'Accessories'].includes(item.type)) {
+  if (['Hat', 'Socks', 'Accessories'].includes(item.type)) {
     return 'accessory';
   }
   return 'top';

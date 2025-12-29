@@ -46,6 +46,7 @@ const CLOTHING_TYPES: ClothingType[] = [
   'Boots',
   'Sandals',
   'Hat',
+  'Socks',
   'Underwear',
   'Accessories',
   'Other',

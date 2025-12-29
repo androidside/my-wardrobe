@@ -22,6 +22,7 @@ import { useWardrobe } from './hooks/useWardrobe';
 import { ClothingItem, ClothingColor } from './types/clothing';
 import { LoginCredentials, SignupCredentials } from './types/auth';
 import { getUserProfile, saveUserProfile } from './services/firestore';
+import { UserProfile } from './types/profile';
 import { FittingRoom } from './components/FittingRoom';
 import './App.css';
 
@@ -35,10 +36,10 @@ function AppContent() {
   const [editingItem, setEditingItem] = useState<ClothingItem | null>(null);
   const [activePage, setActivePage] = useState<'wardrobe' | 'fitting-room' | 'profile'>('wardrobe');
   const [selectedItem, setSelectedItem] = useState<ClothingItem | null>(null);
-  const [filterType, setFilterType] = useState<string | 'All'>('All');
+  const [selectedType, setSelectedType] = useState<ClothingItem['type'] | null>(null); // Selected type category
   const [filterBrand, setFilterBrand] = useState<string | 'All'>('All');
   const [filterColor, setFilterColor] = useState<string | 'All'>('All');
-  const [userProfile, setUserProfile] = useState<{ fullName?: string } | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
   // Auth handlers
   const handleLogin = async (credentials: LoginCredentials) => {
@@ -100,14 +101,17 @@ function AppContent() {
   }, [user]);
 
   // Compute available filter options from items
-  const types = Array.from(new Set(items.map((i) => i.type))).sort();
   const brands = Array.from(new Set(items.map((i) => i.brand))).filter(Boolean).sort();
   const colors = Array.from(new Set(items.map((i) => i.color))).filter(Boolean).sort() as ClothingColor[];
 
-  const filteredItems = items
-    .filter((it) => (filterType === 'All' ? true : it.type === filterType))
-    .filter((it) => (filterBrand === 'All' ? true : it.brand === filterBrand))
-    .filter((it) => (filterColor === 'All' ? true : it.color === filterColor));
+  // Filter items - filter by selected type, brand, and color
+  const filteredItems = items.filter((it) => {
+    return (
+      (selectedType === null ? true : it.type === selectedType) &&
+      (filterBrand === 'All' ? true : it.brand === filterBrand) &&
+      (filterColor === 'All' ? true : it.color === filterColor)
+    );
+  });
 
   const handleEdit = (item: ClothingItem) => {
     setEditingItem(item);
@@ -164,10 +168,10 @@ function AppContent() {
                 <p className="text-sm text-gray-600">
                   {filteredItems.length} {filteredItems.length === 1 ? 'item' : 'items'}
                 </p>
-                {(filterType !== 'All' || filterBrand !== 'All' || filterColor !== 'All') && (
+                {(selectedType !== null || filterBrand !== 'All' || filterColor !== 'All') && (
                   <p className="text-xs text-gray-500 mt-0.5">
-                    {filterType !== 'All' && <span>{filterType}</span>}
-                    {filterType !== 'All' && filterBrand !== 'All' && <span> • </span>}
+                    {selectedType !== null && <span>{selectedType}</span>}
+                    {selectedType !== null && filterBrand !== 'All' && <span> • </span>}
                     {filterBrand !== 'All' && <span>{filterBrand}</span>}
                     {filterBrand !== 'All' && filterColor !== 'All' && <span> • </span>}
                     {filterColor !== 'All' && <span>{filterColor}</span>}
@@ -179,25 +183,11 @@ function AppContent() {
         </div>
       </header>
 
-      {/* Floating Filter Bar - Sticks to top when scrolling */}
-      {activePage === 'wardrobe' && (
+      {/* Floating Filter Bar - Sticks to top when scrolling - Only show when a type is selected */}
+      {activePage === 'wardrobe' && selectedType !== null && (
         <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
           <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8">
             <div className="flex items-center gap-2 sm:gap-3">
-              <Select value={filterType} onValueChange={(v) => setFilterType(v)}>
-                <SelectTrigger className="w-24 sm:w-40 h-8 sm:h-9 text-xs sm:text-sm">
-                  <SelectValue placeholder="Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="All">All types</SelectItem>
-                  {types.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {t}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
               <Select value={filterBrand} onValueChange={(v) => setFilterBrand(v)}>
                 <SelectTrigger className="w-24 sm:w-40 h-8 sm:h-9 text-xs sm:text-sm">
                   <SelectValue placeholder="Brand" />
@@ -241,6 +231,9 @@ function AppContent() {
         {activePage === 'wardrobe' ? (
           <WardrobeGallery
             items={filteredItems}
+            allItems={items}
+            selectedType={selectedType}
+            onTypeSelect={setSelectedType}
             onEdit={handleEdit}
             onDelete={deleteItem}
             onView={(item) => setSelectedItem(item)}

@@ -68,6 +68,8 @@ function matchClothingType(labels: string[]): string | null {
     
     // Headwear (priority 6)
     { keywords: ['hat', 'cap', 'baseball cap', 'beanie', 'beanie hat', 'winter hat', 'fedora', 'bucket hat'], type: 'Hat', priority: 6 },
+    // Socks (priority 6)
+    { keywords: ['sock', 'socks', 'ankle sock', 'crew sock', 'knee sock', 'athletic sock'], type: 'Socks', priority: 6 },
     // Underwear (priortiy 6)
     { keywords: ['underwear', 'undergarment', 'underclothes','underpants','boxers','briefs','panties'], type: 'Underwear', priority: 6 },
     // Accessories (priority 5)
