@@ -28,6 +28,7 @@ import { getUserProfile } from '@/services/firestore';
 import { UserProfile } from '@/types/profile';
 import { ClothingAnalysis } from '@/services/imageAnalysis';
 import { BRAND_LIST } from '@/data/brands';
+import { useWardrobeContext } from '@/contexts/WardrobeContext';
 
 const CLOTHING_TYPES: ClothingType[] = [
   'T-shirt',
@@ -71,13 +72,15 @@ const COLORS: ClothingColor[] = [
 ];
 
 interface AddClothingFormProps {
-  onSubmit: (item: ClothingItemInput) => Promise<void>;
+  onSubmit: (item: ClothingItemInput, wardrobeId?: string) => Promise<void>;
   onCancel?: () => void;
   existingItems?: Array<{ brand: string }>; // Optional: existing wardrobe items for brand suggestions
+  defaultWardrobeId?: string; // Default wardrobe to assign item to
 }
 
-export function AddClothingForm({ onSubmit, onCancel, existingItems = [] }: AddClothingFormProps) {
+export function AddClothingForm({ onSubmit, onCancel, existingItems = [], defaultWardrobeId }: AddClothingFormProps) {
   const { user } = useAuth();
+  const { wardrobes } = useWardrobeContext();
   const [imageBlob, setImageBlob] = useState<Blob | null>(null);
   const [type, setType] = useState<ClothingType | ''>('');
   const [brand, setBrand] = useState('');
@@ -86,6 +89,7 @@ export function AddClothingForm({ onSubmit, onCancel, existingItems = [] }: AddC
   const [cost, setCost] = useState('');
   const [formalityLevel, setFormalityLevel] = useState<FormalityLevel>(3); // Default to middle (3)
   const [notes, setNotes] = useState('');
+  const [selectedWardrobeId, setSelectedWardrobeId] = useState<string>(defaultWardrobeId || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -98,6 +102,13 @@ export function AddClothingForm({ onSubmit, onCancel, existingItems = [] }: AddC
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
   const brandInputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  // Set default wardrobe when component mounts or defaultWardrobeId changes
+  useEffect(() => {
+    if (defaultWardrobeId && !selectedWardrobeId) {
+      setSelectedWardrobeId(defaultWardrobeId);
+    }
+  }, [defaultWardrobeId, selectedWardrobeId]);
 
   // Filter brands based on input - combine BRAND_LIST with user's existing brands
   useEffect(() => {
@@ -380,7 +391,7 @@ export function AddClothingForm({ onSubmit, onCancel, existingItems = [] }: AddC
         notes: notes || undefined,
       };
 
-      await onSubmit(item);
+      await onSubmit(item, selectedWardrobeId || undefined);
 
       // Reset form
       setImageBlob(null);
@@ -416,6 +427,30 @@ export function AddClothingForm({ onSubmit, onCancel, existingItems = [] }: AddC
           </div>
         )}
       </div>
+
+      {/* Wardrobe Selection */}
+      {wardrobes.length > 1 && (
+        <div>
+          <Label htmlFor="wardrobe" className="text-base">
+            Wardrobe
+          </Label>
+          <Select 
+            value={selectedWardrobeId} 
+            onValueChange={setSelectedWardrobeId}
+          >
+            <SelectTrigger id="wardrobe" className="mt-1">
+              <SelectValue placeholder="Select wardrobe" />
+            </SelectTrigger>
+            <SelectContent>
+              {wardrobes.map((wardrobe) => (
+                <SelectItem key={wardrobe.id} value={wardrobe.id}>
+                  {wardrobe.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {/* Clothing Type */}
       <div>

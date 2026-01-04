@@ -62,6 +62,7 @@ export interface ClothingItem {
   imageId: string; // Reference to image stored in IndexedDB
   dateAdded: string; // ISO date string
   notes?: string; // Optional field for additional notes
+  wardrobeId?: string; // Optional for backward compatibility - ID of the wardrobe this item belongs to
 }
 
 export interface ClothingItemInput {

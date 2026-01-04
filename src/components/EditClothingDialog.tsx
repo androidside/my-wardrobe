@@ -31,6 +31,8 @@ import {
 } from '@/types/clothing';
 import { storageService } from '@/utils/storage';
 import { BRAND_LIST } from '@/data/brands';
+import { Wardrobe } from '@/types/wardrobe';
+import { useWardrobeContext } from '@/contexts/WardrobeContext';
 
 
 const CLOTHING_TYPES: ClothingType[] = [
@@ -78,7 +80,7 @@ interface EditClothingDialogProps {
   item: ClothingItem | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onUpdate: (id: string, updates: Partial<ClothingItemInput>) => Promise<any>;
+  onUpdate: (id: string, updates: Partial<ClothingItemInput>, wardrobeId?: string) => Promise<any>;
   existingItems?: Array<{ brand: string }>; // Optional: existing wardrobe items for brand suggestions
 }
 
@@ -89,6 +91,7 @@ export function EditClothingDialog({
   onUpdate,
   existingItems = [],
 }: EditClothingDialogProps) {
+  const { wardrobes } = useWardrobeContext();
   const [imageBlob, setImageBlob] = useState<Blob | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [type, setType] = useState<ClothingType>('T-shirt');
@@ -98,6 +101,7 @@ export function EditClothingDialog({
   const [cost, setCost] = useState('');
   const [formalityLevel, setFormalityLevel] = useState<FormalityLevel>(3);
   const [notes, setNotes] = useState('');
+  const [selectedWardrobeId, setSelectedWardrobeId] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Brand autocomplete state
@@ -212,6 +216,7 @@ export function EditClothingDialog({
       setCost(item.cost.toString());
       setFormalityLevel(item.formalityLevel || 3);
       setNotes(item.notes || '');
+      setSelectedWardrobeId(item.wardrobeId || '');
 
       // Load image preview
       storageService.getImageUrl(item.imageId).then((url) => {
@@ -255,7 +260,9 @@ export function EditClothingDialog({
         updates.imageBlob = imageBlob;
       }
 
-      await onUpdate(item.id, updates);
+      // Pass the selected wardrobeId (only if it changed from the original)
+      const newWardrobeId = selectedWardrobeId !== item.wardrobeId ? selectedWardrobeId : undefined;
+      await onUpdate(item.id, updates, newWardrobeId);
       onOpenChange(false);
     } catch (error) {
       console.error('Error updating item:', error);
@@ -440,6 +447,30 @@ export function EditClothingDialog({
               className="mt-1"
             />
           </div>
+
+          {/* Wardrobe Selection */}
+          {wardrobes.length > 1 && (
+            <div>
+              <Label htmlFor="edit-wardrobe" className="text-base">
+                Wardrobe
+              </Label>
+              <Select
+                value={selectedWardrobeId || ''}
+                onValueChange={(value) => setSelectedWardrobeId(value)}
+              >
+                <SelectTrigger id="edit-wardrobe" className="mt-1">
+                  <SelectValue placeholder="Select wardrobe" />
+                </SelectTrigger>
+                <SelectContent>
+                  {wardrobes.map((w) => (
+                    <SelectItem key={w.id} value={w.id}>
+                      {w.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex gap-3 pt-4">

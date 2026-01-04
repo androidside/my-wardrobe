@@ -14,10 +14,11 @@ import { uploadImage, deleteImage } from './storage';
 class WardrobeStorageService {
   /**
    * Get all clothing items for a user
+   * @param wardrobeId Optional - filter items by wardrobe ID
    */
-  async getAllItems(userId: string): Promise<ClothingItem[]> {
+  async getAllItems(userId: string, wardrobeId?: string): Promise<ClothingItem[]> {
     try {
-      return await getClothingItems(userId);
+      return await getClothingItems(userId, wardrobeId);
     } catch (error) {
       console.error('Error getting items:', error);
       throw error;
@@ -27,9 +28,9 @@ class WardrobeStorageService {
   /**
    * Get a single clothing item by ID
    */
-  async getItem(userId: string, id: string): Promise<ClothingItem | null> {
+  async getItem(userId: string, id: string, wardrobeId?: string): Promise<ClothingItem | null> {
     try {
-      const items = await this.getAllItems(userId);
+      const items = await this.getAllItems(userId, wardrobeId);
       return items.find((item) => item.id === id) || null;
     } catch (error) {
       console.error('Error getting item:', error);
@@ -39,8 +40,9 @@ class WardrobeStorageService {
 
   /**
    * Save a new clothing item
+   * @param wardrobeId Optional - assign item to a specific wardrobe
    */
-  async saveItem(userId: string, input: ClothingItemInput): Promise<ClothingItem> {
+  async saveItem(userId: string, input: ClothingItemInput, wardrobeId?: string): Promise<ClothingItem> {
     try {
       // Generate a temporary ID for the item (will be replaced by Firestore)
       // We use this to organize the image in storage, but the actual item ID comes from Firestore
@@ -74,6 +76,7 @@ class WardrobeStorageService {
         imageId: imageUrl, // Store Firebase Storage URL
         dateAdded: new Date().toISOString(),
         ...(input.notes && { notes: input.notes }), // Only include notes if provided
+        ...(wardrobeId && { wardrobeId }), // Include wardrobeId if provided
       };
 
       console.log('Saving item to Firestore...', { userId, itemData });
@@ -117,7 +120,8 @@ class WardrobeStorageService {
   async updateItem(
     userId: string,
     id: string,
-    updates: Partial<ClothingItemInput>
+    updates: Partial<ClothingItemInput>,
+    newWardrobeId?: string
   ): Promise<ClothingItem> {
     try {
       const existingItem = await this.getItem(userId, id);
@@ -160,6 +164,14 @@ class WardrobeStorageService {
         updateData.notes = updates.notes || undefined;
       } else if (existingItem.notes) {
         updateData.notes = existingItem.notes;
+      }
+
+      // Handle wardrobeId change
+      if (newWardrobeId !== undefined) {
+        updateData.wardrobeId = newWardrobeId || undefined;
+      } else if (existingItem.wardrobeId) {
+        // Keep existing wardrobeId if not changing
+        updateData.wardrobeId = existingItem.wardrobeId;
       }
 
       // Update in Firestore

@@ -8,6 +8,7 @@ import { MyProfile } from './components/MyProfile';
 import { ClothingDetailsDialog } from './components/ClothingDetailsDialog';
 import { EditClothingDialog } from './components/EditClothingDialog';
 import { BottomNavigation } from './components/BottomNavigation';
+import { WardrobeSelector } from './components/WardrobeSelector';
 import { Button } from './components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
 import {
@@ -17,11 +18,12 @@ import {
   DialogTitle,
 } from './components/ui/dialog';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { WardrobeProvider, useWardrobeContext } from './contexts/WardrobeContext';
 import { signup } from './services/auth';
 import { useWardrobe } from './hooks/useWardrobe';
 import { ClothingItem, ClothingColor } from './types/clothing';
 import { LoginCredentials, SignupCredentials } from './types/auth';
-import { getUserProfile, saveUserProfile } from './services/firestore';
+import { getUserProfile, saveUserProfile, getClothingItems, updateClothingItem } from './services/firestore';
 import { UserProfile } from './types/profile';
 import { FittingRoom } from './components/FittingRoom';
 import './App.css';
@@ -30,8 +32,19 @@ function AppContent() {
   const { user, loading: authLoading, login, signup, logout } = useAuth();
   const [authPage, setAuthPage] = useState<'login' | 'signup'>('login');
 
-  // Wardrobe state
-  const { items, loading, error, addItem, updateItem, deleteItem } = useWardrobe();
+  // Wardrobes management
+  const { currentWardrobeId, wardrobes, loading: wardrobesLoading } = useWardrobeContext();
+  
+  // Wardrobe state - filter by current wardrobe
+  // Key the hook by wardrobeId to force re-initialization when switching wardrobes
+  console.log('[App] Render - currentWardrobeId:', currentWardrobeId);
+  const wardrobeIdForHook = currentWardrobeId || undefined;
+  console.log('[App] Passing wardrobeId to useWardrobe:', wardrobeIdForHook);
+  const { items, loading, error, addItem, updateItem, deleteItem, refresh: refreshItems } = useWardrobe(wardrobeIdForHook);
+  console.log('[App] items count:', items.length, 'for wardrobe:', currentWardrobeId);
+  
+  // Note: We don't need a separate useEffect to refresh items
+  // The useWardrobe hook's useEffect will automatically reload when wardrobeId changes
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingItem, setEditingItem] = useState<ClothingItem | null>(null);
   const [activePage, setActivePage] = useState<'wardrobe' | 'fitting-room' | 'profile'>('wardrobe');
@@ -40,6 +53,7 @@ function AppContent() {
   const [filterBrand, setFilterBrand] = useState<string | 'All'>('All');
   const [filterColor, setFilterColor] = useState<string | 'All'>('All');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [migrationDone, setMigrationDone] = useState(false);
 
   // Auth handlers
   const handleLogin = async (credentials: LoginCredentials) => {
@@ -100,6 +114,37 @@ function AppContent() {
     loadUserProfile();
   }, [user]);
 
+  // Migration: Move existing items without wardrobeId to default "Wardrobe 1"
+  // Note: useWardrobes hook automatically creates "Wardrobe 1" if none exists
+  useEffect(() => {
+    const migrateExistingItems = async () => {
+      if (!user || migrationDone || wardrobesLoading || !currentWardrobeId) return;
+
+      try {
+        // Get all items without wardrobeId
+        const allItems = await getClothingItems(user.uid);
+        const itemsWithoutWardrobe = allItems.filter((item) => !item.wardrobeId);
+
+        // Update items to assign them to default wardrobe (currentWardrobeId should be "Wardrobe 1")
+        if (itemsWithoutWardrobe.length > 0) {
+          for (const item of itemsWithoutWardrobe) {
+            await updateClothingItem(user.uid, item.id, { wardrobeId: currentWardrobeId });
+          }
+          // Refresh items after migration
+          refreshItems();
+        }
+
+        setMigrationDone(true);
+      } catch (err) {
+        console.error('Error during migration:', err);
+        // Don't block the app if migration fails
+        setMigrationDone(true);
+      }
+    };
+
+    migrateExistingItems();
+  }, [user, migrationDone, wardrobesLoading, currentWardrobeId, refreshItems]);
+
   // Compute available filter options from items
   const brands = Array.from(new Set(items.map((i) => i.brand))).filter(Boolean).sort();
   const colors = Array.from(new Set(items.map((i) => i.color))).filter(Boolean).sort() as ClothingColor[];
@@ -117,7 +162,20 @@ function AppContent() {
     setEditingItem(item);
   };
 
-  if (authLoading || loading) {
+  const handleWardrobeChange = (wardrobeId: string) => {
+    console.log('[App] handleWardrobeChange called with:', wardrobeId);
+    // Reset filters when switching wardrobes
+    setSelectedType(null);
+    setFilterBrand('All');
+    setFilterColor('All');
+    // Force refresh items when wardrobe changes
+    // The useEffect in useWardrobe should handle this, but let's also call it manually
+    setTimeout(() => {
+      refreshItems();
+    }, 100);
+  };
+
+  if (authLoading || loading || wardrobesLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -158,12 +216,10 @@ function AppContent() {
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">🚪 My Fitting Room</h1>
             </div>
           ) : (
-            <div className="flex items-start justify-between">
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-                {userProfile?.firstName 
-                  ? `${userProfile.firstName}'s Wardrobe`
-                  : 'My Wardrobe'}
-              </h1>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <WardrobeSelector onWardrobeChange={handleWardrobeChange} />
+              </div>
               <div className="text-right">
                 <p className="text-sm text-gray-600">
                   {filteredItems.length} {filteredItems.length === 1 ? 'item' : 'items'}
@@ -230,6 +286,7 @@ function AppContent() {
 
         {activePage === 'wardrobe' ? (
           <WardrobeGallery
+            key={currentWardrobeId || 'no-wardrobe'}
             items={filteredItems}
             allItems={items}
             selectedType={selectedType}
@@ -272,12 +329,13 @@ function AppContent() {
             <DialogTitle>Add New Clothing Item</DialogTitle>
           </DialogHeader>
           <AddClothingForm
-            onSubmit={async (input) => {
-              await addItem(input);
+            onSubmit={async (input, wardrobeId) => {
+              await addItem(input, wardrobeId);
               setShowAddDialog(false);
             }}
             onCancel={() => setShowAddDialog(false)}
             existingItems={items}
+            defaultWardrobeId={currentWardrobeId || undefined}
           />
         </DialogContent>
       </Dialog>
@@ -298,7 +356,9 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <WardrobeProvider>
+        <AppContent />
+      </WardrobeProvider>
     </AuthProvider>
   );
 }

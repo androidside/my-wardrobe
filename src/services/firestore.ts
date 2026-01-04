@@ -7,11 +7,14 @@ import {
   getDocs,
   updateDoc,
   deleteDoc,
+  where,
   FirestoreError,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { UserProfile } from '../types/profile';
 import { ClothingItem } from '../types/clothing';
+import { Wardrobe, WardrobeInput } from '../types/wardrobe';
 
 /*
   Firestore Security Rules:
@@ -21,6 +24,9 @@ import { ClothingItem } from '../types/clothing';
       match /users/{userId} {
         allow read, write: if request.auth.uid == userId;
         match /wardrobe/{itemId} {
+          allow read, write: if request.auth.uid == userId;
+        }
+        match /wardrobes/{wardrobeId} {
           allow read, write: if request.auth.uid == userId;
         }
       }
@@ -107,10 +113,17 @@ export const saveClothingItem = async (userId: string, item: Omit<ClothingItem, 
   }
 };
 
-export const getClothingItems = async (userId: string): Promise<ClothingItem[]> => {
+export const getClothingItems = async (userId: string, wardrobeId?: string): Promise<ClothingItem[]> => {
   try {
     const itemsRef = collection(db, 'users', userId, 'wardrobe');
-    const q = query(itemsRef);
+    let q;
+    
+    if (wardrobeId) {
+      q = query(itemsRef, where('wardrobeId', '==', wardrobeId));
+    } else {
+      q = query(itemsRef);
+    }
+    
     const querySnapshot = await getDocs(q);
 
     return querySnapshot.docs.map((doc) => ({
@@ -144,6 +157,134 @@ export const deleteClothingItem = async (userId: string, itemId: string): Promis
   try {
     const itemRef = doc(db, 'users', userId, 'wardrobe', itemId);
     await deleteDoc(itemRef);
+  } catch (error) {
+    const firestoreError = error as FirestoreError;
+    throw new Error(getFirestoreErrorMessage(firestoreError));
+  }
+};
+
+// Wardrobe CRUD operations
+export const createWardrobe = async (userId: string, input: WardrobeInput): Promise<string> => {
+  try {
+    // Check if wardrobe name already exists
+    const existingWardrobes = await getWardrobes(userId);
+    const nameExists = existingWardrobes.some(w => w.name.toLowerCase() === input.name.toLowerCase().trim());
+    if (nameExists) {
+      throw new Error('A wardrobe with this name already exists.');
+    }
+
+    const wardrobesRef = collection(db, 'users', userId, 'wardrobes');
+    const now = new Date().toISOString();
+    const wardrobeData = {
+      name: input.name.trim(),
+      createdAt: now,
+      updatedAt: now,
+    };
+    const docRef = doc(wardrobesRef);
+    await setDoc(docRef, wardrobeData);
+    return docRef.id;
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('already exists')) {
+      throw error;
+    }
+    const firestoreError = error as FirestoreError;
+    throw new Error(getFirestoreErrorMessage(firestoreError));
+  }
+};
+
+export const getWardrobes = async (userId: string): Promise<Wardrobe[]> => {
+  try {
+    const wardrobesRef = collection(db, 'users', userId, 'wardrobes');
+    const q = query(wardrobesRef);
+    const querySnapshot = await getDocs(q);
+
+    return querySnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    } as Wardrobe));
+  } catch (error) {
+    const firestoreError = error as FirestoreError;
+    throw new Error(getFirestoreErrorMessage(firestoreError));
+  }
+};
+
+export const updateWardrobe = async (userId: string, wardrobeId: string, input: WardrobeInput): Promise<void> => {
+  try {
+    // Check if wardrobe name already exists (excluding current wardrobe)
+    const existingWardrobes = await getWardrobes(userId);
+    const nameExists = existingWardrobes.some(
+      w => w.id !== wardrobeId && w.name.toLowerCase() === input.name.toLowerCase().trim()
+    );
+    if (nameExists) {
+      throw new Error('A wardrobe with this name already exists.');
+    }
+
+    const wardrobeRef = doc(db, 'users', userId, 'wardrobes', wardrobeId);
+    await updateDoc(wardrobeRef, {
+      name: input.name.trim(),
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('already exists')) {
+      throw error;
+    }
+    const firestoreError = error as FirestoreError;
+    throw new Error(getFirestoreErrorMessage(firestoreError));
+  }
+};
+
+export const deleteWardrobe = async (userId: string, wardrobeId: string): Promise<void> => {
+  try {
+    const wardrobeRef = doc(db, 'users', userId, 'wardrobes', wardrobeId);
+    await deleteDoc(wardrobeRef);
+  } catch (error) {
+    const firestoreError = error as FirestoreError;
+    throw new Error(getFirestoreErrorMessage(firestoreError));
+  }
+};
+
+export const moveItemsToWardrobe = async (userId: string, fromWardrobeId: string, toWardrobeId: string): Promise<void> => {
+  try {
+    // Get all items from source wardrobe
+    const items = await getClothingItems(userId, fromWardrobeId);
+    
+    if (items.length === 0) {
+      return; // Nothing to move
+    }
+
+    // Use batch write for atomic operation
+    const batch = writeBatch(db);
+    
+    items.forEach((item) => {
+      const itemRef = doc(db, 'users', userId, 'wardrobe', item.id);
+      batch.update(itemRef, { wardrobeId: toWardrobeId });
+    });
+
+    await batch.commit();
+  } catch (error) {
+    const firestoreError = error as FirestoreError;
+    throw new Error(getFirestoreErrorMessage(firestoreError));
+  }
+};
+
+export const deleteItemsInWardrobe = async (userId: string, wardrobeId: string): Promise<void> => {
+  try {
+    // Get all items from wardrobe
+    const items = await getClothingItems(userId, wardrobeId);
+    
+    if (items.length === 0) {
+      return; // Nothing to delete
+    }
+
+    // Use batch write for atomic operation
+    const batch = writeBatch(db);
+    
+    items.forEach((item) => {
+      const itemRef = doc(db, 'users', userId, 'wardrobe', item.id);
+      batch.delete(itemRef);
+    });
+
+    await batch.commit();
   } catch (error) {
     const firestoreError = error as FirestoreError;
     throw new Error(getFirestoreErrorMessage(firestoreError));
