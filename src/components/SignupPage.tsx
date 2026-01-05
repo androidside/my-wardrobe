@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
+import { COUNTRIES } from '@/data/countries';
 
 interface SignupPageProps {
   onSwitchToLogin: () => void;
@@ -278,18 +279,28 @@ export function SignupPage({ onSwitchToLogin, onSignup }: SignupPageProps) {
                   <Label htmlFor="country" className="text-sm font-medium text-gray-700 block mb-2">
                     Country *
                   </Label>
-                  <Input
-                    id="country"
-                    type="text"
+                  <Select
                     value={country}
-                    onChange={(e) => {
-                      setCountry(e.target.value);
+                    onValueChange={(value) => {
+                      setCountry(value);
                       if (errors.country) setErrors({ ...errors, country: undefined });
                     }}
-                    placeholder="United States"
-                    className={`w-full ${errors.country ? 'border-red-500' : ''}`}
-                    disabled={isLoading}
-                  />
+                  >
+                    <SelectTrigger 
+                      id="country" 
+                      className={`w-full ${errors.country ? 'border-red-500' : ''}`}
+                      disabled={isLoading}
+                    >
+                      <SelectValue placeholder="Select country" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[300px]">
+                      {COUNTRIES.map((countryName) => (
+                        <SelectItem key={countryName} value={countryName}>
+                          {countryName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   {errors.country && (
                     <p className="text-red-500 text-sm mt-1">{errors.country}</p>
                   )}

@@ -16,6 +16,7 @@ import { getUserProfile, saveUserProfile } from '@/services/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 import { updateUserPassword } from '@/services/auth';
 import { SHOE_SIZES, REGULAR_SIZES } from '@/types/clothing';
+import { COUNTRIES } from '@/data/countries';
 
 export function MyProfile() {
   const { user, logout } = useAuth();
@@ -278,14 +279,21 @@ export function MyProfile() {
             </div>
             <div>
               <Label htmlFor="country" className="text-sm font-medium text-gray-700 block mb-1">Country</Label>
-              <Input
-                id="country"
-                type="text"
-                placeholder="United States"
-                value={profile.country || ''}
-                onChange={(e) => setProfile({ ...profile, country: e.target.value })}
-                className="mt-1"
-              />
+              <Select 
+                value={profile.country || ''} 
+                onValueChange={(value) => setProfile({ ...profile, country: value || undefined })}
+              >
+                <SelectTrigger id="country" className="mt-1">
+                  <SelectValue placeholder="Select country" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px]">
+                  {COUNTRIES.map((countryName) => (
+                    <SelectItem key={countryName} value={countryName}>
+                      {countryName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
