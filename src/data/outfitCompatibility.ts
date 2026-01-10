@@ -1,19 +1,19 @@
 // Compatibility matrix for outfit combinations
 // This is a basic version - can be enhanced by running: npm run generate:compatibility
 
-import { ClothingType, ClothingColor } from '../types/clothing';
+import { ClothingColor, CLOTHING_TYPES_BY_CATEGORY } from '../types/clothing';
 
 export interface CompatibilityMatrix {
   colorCompatibility: Record<ClothingColor, Record<ClothingColor, number>>;
-  typeCompatibility: Record<ClothingType, Record<ClothingType, number>>;
+  typeCompatibility: Record<string, Record<string, number>>; // Changed to string to support new type system
   styleRules: {
-    formalityLevels?: Record<ClothingType, 'formal' | 'casual' | 'sporty' | 'versatile'>; // Deprecated - using user-defined formality levels
+    formalityLevels?: Record<string, 'formal' | 'casual' | 'sporty' | 'versatile'>; // Deprecated - using user-defined formality levels
     typeCategories: {
-      tops: ClothingType[];
-      bottoms: ClothingType[];
-      outerwear: ClothingType[];
-      footwear: ClothingType[];
-      accessories: ClothingType[];
+      tops: string[];
+      bottoms: string[];
+      outerwear: string[];
+      footwear: string[];
+      accessories: string[];
     };
     compatibilityRules: Array<{
       rule: string;
@@ -43,7 +43,8 @@ const colorCompatibility: Record<ClothingColor, Record<ClothingColor, number>> =
 };
 
 // Basic type compatibility matrix (0-10 scale)
-const typeCompatibility: Record<ClothingType, Record<ClothingType, number>> = {
+// Uses string keys to support both old and new type names
+const typeCompatibility: Record<string, Record<string, number>> = {
   'T-shirt': { 'T-shirt': 2, 'Shirt': 3, 'Jacket': 9, 'Coat': 8, 'Sweater': 3, 'Hoodie': 3, 'Pants': 10, 'Jeans': 10, 'Shorts': 9, 'Skirt': 8, 'Dress': 2, 'Shoes': 8, 'Sneakers': 10, 'Boots': 7, 'Sandals': 8, 'Hat': 9, 'Socks': 8, 'Underwear': 2, 'Accessories': 8, 'Other': 5 },
   'Shirt': { 'T-shirt': 3, 'Shirt': 2, 'Jacket': 10, 'Coat': 9, 'Sweater': 4, 'Hoodie': 3, 'Pants': 10, 'Jeans': 9, 'Shorts': 7, 'Skirt': 9, 'Dress': 2, 'Shoes': 10, 'Sneakers': 7, 'Boots': 8, 'Sandals': 6, 'Hat': 8, 'Socks': 8, 'Underwear': 2, 'Accessories': 9, 'Other': 5 },
   'Jacket': { 'T-shirt': 9, 'Shirt': 10, 'Jacket': 2, 'Coat': 3, 'Sweater': 9, 'Hoodie': 8, 'Pants': 9, 'Jeans': 9, 'Shorts': 6, 'Skirt': 8, 'Dress': 7, 'Shoes': 9, 'Sneakers': 8, 'Boots': 9, 'Sandals': 4, 'Hat': 8, 'Socks': 8, 'Underwear': 2, 'Accessories': 8, 'Other': 5 },
@@ -93,11 +94,11 @@ export const OUTFIT_COMPATIBILITY: CompatibilityMatrix = {
       'Other': 'versatile',
     },
     typeCategories: {
-      tops: ['T-shirt', 'Shirt', 'Sweater', 'Hoodie'],
-      bottoms: ['Pants', 'Jeans', 'Shorts', 'Skirt','Underwear'],
-      outerwear: ['Jacket', 'Coat'],
-      footwear: ['Shoes', 'Sneakers', 'Boots', 'Sandals'],
-      accessories: ['Hat', 'Socks', 'Accessories'],
+      tops: CLOTHING_TYPES_BY_CATEGORY.Tops,
+      bottoms: CLOTHING_TYPES_BY_CATEGORY.Bottoms,
+      outerwear: CLOTHING_TYPES_BY_CATEGORY.Outerwear,
+      footwear: CLOTHING_TYPES_BY_CATEGORY.Footwear,
+      accessories: CLOTHING_TYPES_BY_CATEGORY.Accessories,
     },
     compatibilityRules: [
       { rule: 'matching_formality', description: 'Items with matching formality levels score +2', score: 2 },
@@ -108,17 +109,40 @@ export const OUTFIT_COMPATIBILITY: CompatibilityMatrix = {
 };
 
 // Helper function to get color compatibility score
-export function getColorCompatibility(color1: ClothingColor, color2: ClothingColor): number {
-  return OUTFIT_COMPATIBILITY.colorCompatibility[color1]?.[color2] ?? 5;
+// Enhanced to handle multiple colors: calculates average compatibility across all color combinations
+export function getColorCompatibility(
+  color1: ClothingColor,
+  color2: ClothingColor,
+  colors1?: ClothingColor[],
+  colors2?: ClothingColor[]
+): number {
+  // If items have multiple colors, calculate compatibility for all combinations
+  const colors1List = colors1 && colors1.length > 0 ? [color1, ...colors1] : [color1];
+  const colors2List = colors2 && colors2.length > 0 ? [color2, ...colors2] : [color2];
+  
+  // Calculate average compatibility across all color combinations
+  let totalScore = 0;
+  let combinations = 0;
+  
+  for (const c1 of colors1List) {
+    for (const c2 of colors2List) {
+      const score = OUTFIT_COMPATIBILITY.colorCompatibility[c1]?.[c2] ?? 5;
+      totalScore += score;
+      combinations++;
+    }
+  }
+  
+  return combinations > 0 ? Math.round((totalScore / combinations) * 10) / 10 : 5;
 }
 
 // Helper function to get type compatibility score
-export function getTypeCompatibility(type1: ClothingType, type2: ClothingType): number {
+// Works with string types (both old and new type names)
+export function getTypeCompatibility(type1: string, type2: string): number {
   return OUTFIT_COMPATIBILITY.typeCompatibility[type1]?.[type2] ?? 5;
 }
 
 // Helper function to get formality level (deprecated - using user-defined formality levels)
-export function getFormalityLevel(type: ClothingType): 'formal' | 'casual' | 'sporty' | 'versatile' {
+export function getFormalityLevel(type: string): 'formal' | 'casual' | 'sporty' | 'versatile' {
   return OUTFIT_COMPATIBILITY.styleRules.formalityLevels?.[type] ?? 'versatile';
 }
 

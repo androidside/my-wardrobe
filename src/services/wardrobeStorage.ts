@@ -6,6 +6,7 @@ import {
   deleteClothingItem,
 } from './firestore';
 import { uploadImage, deleteImage } from './storage';
+import { migrateItem, migrateItems } from '@/utils/clothingMigration';
 
 /**
  * Unified storage service for wardrobe items
@@ -18,7 +19,9 @@ class WardrobeStorageService {
    */
   async getAllItems(userId: string, wardrobeId?: string): Promise<ClothingItem[]> {
     try {
-      return await getClothingItems(userId, wardrobeId);
+      const items = await getClothingItems(userId, wardrobeId);
+      // Migrate items to new structure if needed
+      return migrateItems(items);
     } catch (error) {
       console.error('Error getting items:', error);
       throw error;
@@ -31,7 +34,9 @@ class WardrobeStorageService {
   async getItem(userId: string, id: string, wardrobeId?: string): Promise<ClothingItem | null> {
     try {
       const items = await this.getAllItems(userId, wardrobeId);
-      return items.find((item) => item.id === id) || null;
+      const item = items.find((item) => item.id === id) || null;
+      // Ensure item is migrated
+      return item ? migrateItems([item])[0] : null;
     } catch (error) {
       console.error('Error getting item:', error);
       throw error;
@@ -68,6 +73,7 @@ class WardrobeStorageService {
       // Create clothing item (imageId will store the Firebase Storage URL)
       // Only include notes if it's provided (Firestore doesn't like undefined)
       const itemData: Omit<ClothingItem, 'id'> = {
+        category: input.category,
         type: input.type,
         brand: input.brand,
         size: input.size,
@@ -75,6 +81,10 @@ class WardrobeStorageService {
         cost: input.cost,
         imageId: imageUrl, // Store Firebase Storage URL
         dateAdded: new Date().toISOString(),
+        migrated: true, // New items are already in new format
+        ...(input.tags && input.tags.length > 0 && { tags: input.tags }), // Include tags if provided
+        ...(input.colors && input.colors.length > 0 && { colors: input.colors }), // Include additional colors if provided
+        ...(input.pattern && input.pattern !== 'Solid' && { pattern: input.pattern }), // Include pattern if not Solid
         ...(input.notes && { notes: input.notes }), // Only include notes if provided
         ...(wardrobeId && { wardrobeId }), // Include wardrobeId if provided
       };
@@ -129,7 +139,10 @@ class WardrobeStorageService {
         throw new Error('Item not found');
       }
 
-      let imageUrl = existingItem.imageId;
+      // Ensure item is migrated before updating
+      const migratedItem = migrateItem(existingItem);
+
+      let imageUrl = migratedItem.imageId;
 
       // If new image provided, upload it and delete the old one
       if (updates.imageBlob) {
@@ -149,29 +162,57 @@ class WardrobeStorageService {
       }
 
       // Prepare update data
-      // Only include notes if it's provided (Firestore doesn't like undefined)
+      // Use migrated item as base
       const updateData: Partial<ClothingItem> = {
-        type: updates.type ?? existingItem.type,
-        brand: updates.brand ?? existingItem.brand,
-        size: updates.size ?? existingItem.size,
-        color: updates.color ?? existingItem.color,
-        cost: updates.cost ?? existingItem.cost,
+        category: updates.category ?? migratedItem.category,
+        type: updates.type ?? migratedItem.type,
+        brand: updates.brand ?? migratedItem.brand,
+        size: updates.size ?? migratedItem.size,
+        color: updates.color ?? migratedItem.color,
+        cost: updates.cost ?? migratedItem.cost,
         imageId: imageUrl,
+        migrated: true, // Mark as migrated
       };
+      
+      // Handle tags
+      if (updates.tags !== undefined) {
+        updateData.tags = updates.tags;
+      } else if (migratedItem.tags) {
+        updateData.tags = migratedItem.tags;
+      }
+      
+      // Handle colors
+      if (updates.colors !== undefined) {
+        updateData.colors = updates.colors && updates.colors.length > 0 ? updates.colors : undefined;
+      } else if (migratedItem.colors && migratedItem.colors.length > 0) {
+        updateData.colors = migratedItem.colors;
+      }
+      
+      // Handle pattern
+      if (updates.pattern !== undefined) {
+        updateData.pattern = updates.pattern && updates.pattern !== 'Solid' ? updates.pattern : undefined;
+      } else if (migratedItem.pattern && migratedItem.pattern !== 'Solid') {
+        updateData.pattern = migratedItem.pattern;
+      }
       
       // Handle notes separately to avoid undefined
       if (updates.notes !== undefined) {
         updateData.notes = updates.notes || undefined;
-      } else if (existingItem.notes) {
-        updateData.notes = existingItem.notes;
+      } else if (migratedItem.notes) {
+        updateData.notes = migratedItem.notes;
       }
 
       // Handle wardrobeId change
       if (newWardrobeId !== undefined) {
         updateData.wardrobeId = newWardrobeId || undefined;
-      } else if (existingItem.wardrobeId) {
+      } else if (migratedItem.wardrobeId) {
         // Keep existing wardrobeId if not changing
-        updateData.wardrobeId = existingItem.wardrobeId;
+        updateData.wardrobeId = migratedItem.wardrobeId;
+      }
+      
+      // Keep legacyType for reference if it exists
+      if (migratedItem.legacyType) {
+        updateData.legacyType = migratedItem.legacyType;
       }
 
       // Update in Firestore

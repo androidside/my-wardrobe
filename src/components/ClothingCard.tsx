@@ -74,7 +74,15 @@ export function ClothingCard({ item, imageUrl, onEdit, onDelete, onView }: Cloth
         <p className="text-[10px] sm:text-xs text-gray-600 mb-0.5 truncate">{item.type}</p>
         <div className="flex items-center justify-between text-[9px] sm:text-xs gap-1">
           <span className="text-gray-500 truncate">{item.size}</span>
-          <span className="text-gray-500 truncate">{item.color}</span>
+          <div className="text-gray-500 truncate flex items-center gap-1">
+            <span>{item.color}</span>
+            {item.colors && item.colors.length > 0 && (
+              <span className="text-indigo-600" title={`Also: ${item.colors.join(', ')}`}>+{item.colors.length}</span>
+            )}
+            {item.pattern && item.pattern !== 'Solid' && (
+              <span className="text-purple-600" title={`Pattern: ${item.pattern}`}>●</span>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

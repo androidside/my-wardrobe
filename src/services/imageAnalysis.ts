@@ -1,4 +1,5 @@
 import { BRAND_LIST } from '@/data/brands';
+import { ClothingCategory, getCategoryForType, CLOTHING_TYPES_BY_CATEGORY, ClothingPattern } from '@/types/clothing';
 
 export interface BrandOption {
   brand: string;
@@ -13,9 +14,11 @@ export interface ColorOption {
 }
 
 export interface ClothingAnalysis {
+  category?: ClothingCategory; // NEW: Category detected from image
   type?: string;
   color?: string;
   brand?: string;
+  pattern?: ClothingPattern; // NEW: Pattern detected from image
   brandOptions?: BrandOption[]; // Multiple brand options sorted by confidence
   colorOptions?: ColorOption[]; // Multiple color options sorted by confidence
   confidence?: number;
@@ -41,8 +44,9 @@ function blobToBase64(blob: Blob): Promise<string> {
 /**
  * Match detected labels to clothing types with priority-based matching
  * Higher priority items are preferred when multiple matches are found
+ * Returns both category and type for the new hierarchical structure
  */
-function matchClothingType(labels: string[]): string | null {
+function matchClothingType(labels: string[]): { category: ClothingCategory; type: string } | null {
   // Priority-based mapping: higher priority = more specific items
   const typeMapping: Array<{ keywords: string[]; type: string; priority: number }> = [
     // High priority - specific items (priority 10-9)
@@ -94,15 +98,68 @@ function matchClothingType(labels: string[]): string | null {
     }
   }
 
-  // Return highest priority match
+  // Return highest priority match with category
   if (matches.length > 0) {
     matches.sort((a, b) => b.priority - a.priority);
+    const selectedType = matches[0].type;
     console.log('[ClothingTypeDetection] Found matches:', matches);
-    console.log('[ClothingTypeDetection] Selected type:', matches[0].type, 'with priority:', matches[0].priority);
-    return matches[0].type;
+    console.log('[ClothingTypeDetection] Selected type:', selectedType, 'with priority:', matches[0].priority);
+    
+    // Get category for the selected type
+    const category = getCategoryForType(selectedType);
+    console.log('[ClothingTypeDetection] Inferred category:', category);
+    
+    return { category, type: selectedType };
   }
 
   return null;
+}
+
+/**
+ * Detect pattern from labels
+ * Returns the most likely pattern or null if no pattern is detected
+ */
+function detectPattern(labels: string[]): ClothingPattern | null {
+  const patternKeywords: Record<ClothingPattern, string[]> = {
+    'Solid': [],
+    'Stripes': ['stripe', 'striped', 'line', 'lined'],
+    'Checks': ['check', 'checked', 'checker', 'checkered', 'grid'],
+    'Plaid': ['plaid', 'tartan'],
+    'Polka Dots': ['polka', 'dot', 'dotted', 'dots', 'spotted'],
+    'Floral': ['floral', 'flower', 'floral pattern', 'bloom'],
+    'Abstract': ['abstract', 'pattern', 'print', 'graphic'],
+    'Geometric': ['geometric', 'geometric pattern', 'shape', 'triangle', 'square', 'circle'],
+    'Corduroy': ['corduroy', 'cord', 'ribbed', 'wale'],
+    'Other': ['pattern', 'print'],
+  };
+
+  // Priority order for pattern detection (higher priority first)
+  const priorityOrder: ClothingPattern[] = [
+    'Stripes',
+    'Checks',
+    'Plaid',
+    'Polka Dots',
+    'Floral',
+    'Geometric',
+    'Corduroy',
+    'Abstract',
+    'Other',
+  ];
+
+  for (const pattern of priorityOrder) {
+    const keywords = patternKeywords[pattern];
+    for (const label of labels) {
+      const lowerLabel = label.toLowerCase();
+      for (const keyword of keywords) {
+        if (lowerLabel.includes(keyword)) {
+          console.log('[PatternDetection] Detected pattern:', pattern, 'from label:', label);
+          return pattern;
+        }
+      }
+    }
+  }
+
+  return null; // No pattern detected, will default to 'Solid'
 }
 
 /**
@@ -471,11 +528,18 @@ export async function analyzeClothingImage(imageBlob: Blob): Promise<ClothingAna
       throw new Error(`Vision API error: ${result.error.message}`);
     }
 
-    // Extract clothing type from labels
+    // Extract clothing type and category from labels
     const labels = result.labelAnnotations?.map((l: any) => l.description) || [];
     console.log('[ImageAnalysis] Detected labels:', labels);
-    const clothingType = matchClothingType(labels);
+    const clothingMatch = matchClothingType(labels);
+    const clothingType = clothingMatch?.type;
+    const clothingCategory = clothingMatch?.category;
     console.log('[ImageAnalysis] Matched clothing type:', clothingType);
+    console.log('[ImageAnalysis] Matched clothing category:', clothingCategory);
+    
+    // Detect pattern from labels
+    const detectedPattern = detectPattern(labels);
+    console.log('[ImageAnalysis] Detected pattern:', detectedPattern);
 
     // Extract color options
     const dominantColors = result.imagePropertiesAnnotation?.dominantColors?.colors || [];
@@ -503,9 +567,11 @@ export async function analyzeClothingImage(imageBlob: Blob): Promise<ClothingAna
     const detectedText = result.textAnnotations?.[0]?.description || undefined;
 
     const analysisResult = {
+      category: clothingCategory || undefined,
       type: clothingType || undefined,
       color: color || undefined,
       brand: brand || undefined,
+      pattern: detectedPattern || undefined,
       brandOptions: brandOptions.length > 0 ? brandOptions : undefined,
       colorOptions: colorOptions.length > 0 ? colorOptions : undefined,
       confidence,

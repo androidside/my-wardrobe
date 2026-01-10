@@ -1,3 +1,4 @@
+// Legacy type - kept for backward compatibility during migration
 export type ClothingType =
   | 'T-shirt'
   | 'Shirt'
@@ -19,6 +20,49 @@ export type ClothingType =
   | 'Underwear'
   | 'Accessories'
   | 'Other';
+
+// New hierarchical structure
+export type ClothingCategory = 'Tops' | 'Bottoms' | 'Footwear' | 'Outerwear' | 'Accessories';
+
+// Clothing tags for additional metadata
+export type ClothingTag =
+  | 'Sportswear'
+  | 'Gym'
+  | 'Running'
+  | 'Outdoor'
+  | 'Formal'
+  | 'Casual'
+  | 'Beach'
+  | 'Winter'
+  | 'Summer'
+  | 'Workout'
+  | 'Travel'
+  | 'Party'
+  | 'Business'
+  | 'Athletic'
+  | 'Comfort';
+
+// Types organized by category
+export const CLOTHING_TYPES_BY_CATEGORY: Record<ClothingCategory, string[]> = {
+  Tops: ['T-shirt', 'Shirt', 'Sweater', 'Hoodie', 'Tank Top', 'Polo', 'Blouse', 'Tunic', 'Crop Top', 'Long Sleeve'],
+  Bottoms: ['Pants', 'Jeans', 'Shorts', 'Skirt', 'Leggings', 'Sweatpants', 'Chinos', 'Cargo Pants', 'Dress'],
+  Footwear: ['Sneakers', 'Shoes', 'Boots', 'Sandals', 'Slippers', 'Loafers', 'Heels', 'Flats', 'Running Shoes'],
+  Outerwear: ['Jacket', 'Coat', 'Blazer', 'Vest', 'Cardigan', 'Windbreaker', 'Parka', 'Bomber', 'Trench Coat'],
+  Accessories: ['Hat', 'Socks', 'Underwear', 'Belt', 'Watch', 'Scarf', 'Gloves', 'Bag', 'Wallet', 'Jewelry'],
+};
+
+// Get all types as a flat array (for backward compatibility)
+export const ALL_CLOTHING_TYPES: string[] = Object.values(CLOTHING_TYPES_BY_CATEGORY).flat();
+
+// Get category for a given type
+export function getCategoryForType(type: string): ClothingCategory {
+  for (const [category, types] of Object.entries(CLOTHING_TYPES_BY_CATEGORY)) {
+    if (types.includes(type)) {
+      return category as ClothingCategory;
+    }
+  }
+  return 'Accessories'; // Default fallback
+}
 
 // Clothing sizes (for tops, bottoms, etc.)
 export type RegularSize = 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'XXXL' | 'One Size';
@@ -48,28 +92,60 @@ export type ClothingColor =
   | 'Multicolor'
   | 'Other';
 
+// Clothing patterns
+export type ClothingPattern =
+  | 'Solid'
+  | 'Stripes'
+  | 'Checks'
+  | 'Plaid'
+  | 'Polka Dots'
+  | 'Floral'
+  | 'Abstract'
+  | 'Geometric'
+  | 'Corduroy'
+  | 'Other';
+
 // Formality level: 1 = Very Informal, 5 = Very Formal
 export type FormalityLevel = 1 | 2 | 3 | 4 | 5;
 
 export interface ClothingItem {
   id: string;
-  type: ClothingType;
+  
+  // New hierarchical structure
+  category?: ClothingCategory; // Optional for backward compatibility
+  type: string; // Changed from ClothingType to string to support new structure
+  
+  // Legacy field (kept for migration)
+  legacyType?: ClothingType; // Optional - kept for migration reference
+  
+  // Tags for additional metadata
+  tags?: ClothingTag[]; // Array of tags
+  
   brand: string;
   size: ClothingSize;
-  color: ClothingColor;
+  color: ClothingColor; // Primary/dominant color (required for backward compatibility)
+  colors?: ClothingColor[]; // Additional colors for multicolor items (optional)
+  pattern?: ClothingPattern; // Pattern type (defaults to 'Solid' if not specified)
   cost: number;
   formalityLevel?: FormalityLevel; // User-defined formality level (1-5), optional for backward compatibility
   imageId: string; // Reference to image stored in IndexedDB
   dateAdded: string; // ISO date string
   notes?: string; // Optional field for additional notes
   wardrobeId?: string; // Optional for backward compatibility - ID of the wardrobe this item belongs to
+  
+  // Migration flag
+  migrated?: boolean; // Flag to track if item was migrated
 }
 
 export interface ClothingItemInput {
-  type: ClothingType;
+  category: ClothingCategory;
+  type: string; // Type within the category
+  tags?: ClothingTag[]; // Optional tags
   brand: string;
   size: ClothingSize;
-  color: ClothingColor;
+  color: ClothingColor; // Primary/dominant color (required)
+  colors?: ClothingColor[]; // Additional colors for multicolor items (optional)
+  pattern?: ClothingPattern; // Pattern type (optional, defaults to 'Solid')
   cost: number;
   formalityLevel: FormalityLevel; // User-defined formality level (1-5)
   imageBlob: Blob; // Image file to be stored
@@ -77,7 +153,12 @@ export interface ClothingItemInput {
 }
 
 // Helper constants
-export const FOOTWEAR_TYPES: ClothingType[] = ['Shoes', 'Sneakers', 'Boots', 'Sandals'];
+export const FOOTWEAR_TYPES: string[] = CLOTHING_TYPES_BY_CATEGORY.Footwear;
+
+// Helper function to check if type is footwear
+export function isFootwearType(type: string): boolean {
+  return CLOTHING_TYPES_BY_CATEGORY.Footwear.includes(type);
+}
 
 // Mapping EU shoe size to US size (approximate conversions)
 export const EU_TO_US_SIZES: Record<string, string> = {
@@ -120,8 +201,13 @@ export const SHOE_SIZES: ShoeSize[] = [
 ];
 
 export const REGULAR_SIZES: RegularSize[] = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'One Size'];
-export function isFootwear(type: ClothingType): boolean {
-  return FOOTWEAR_TYPES.includes(type);
+
+// Legacy function - kept for backward compatibility
+export function isFootwear(type: ClothingType | string): boolean {
+  if (typeof type === 'string') {
+    return isFootwearType(type);
+  }
+  return FOOTWEAR_TYPES.includes(type as string);
 }
 
 export function formatShoeSize(euSize: ShoeSize): string {

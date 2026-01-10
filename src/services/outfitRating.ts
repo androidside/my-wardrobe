@@ -49,8 +49,13 @@ export function calculateOutfitRating(outfit: OutfitCombination): OutfitRating {
       const item1 = items[i];
       const item2 = items[j];
 
-      // Color compatibility
-      const colorScore = getColorCompatibility(item1.color, item2.color);
+      // Color compatibility (enhanced to handle multiple colors)
+      const colorScore = getColorCompatibility(
+        item1.color,
+        item2.color,
+        item1.colors,
+        item2.colors
+      );
       
       // Type compatibility
       const typeScore = getTypeCompatibility(item1.type, item2.type);
@@ -59,11 +64,20 @@ export function calculateOutfitRating(outfit: OutfitCombination): OutfitRating {
       const pairScore = (colorScore * 0.6) + (typeScore * 0.4);
       scores.push(pairScore);
 
-      // Generate feedback for this pair
+      // Generate feedback for this pair (show all colors if multiple)
+      const item1Colors = item1.colors && item1.colors.length > 0 
+        ? `${item1.color}, ${item1.colors.join(', ')}`
+        : item1.color;
+      const item2Colors = item2.colors && item2.colors.length > 0 
+        ? `${item2.color}, ${item2.colors.join(', ')}`
+        : item2.color;
+      const item1Pattern = item1.pattern && item1.pattern !== 'Solid' ? ` (${item1.pattern})` : '';
+      const item2Pattern = item2.pattern && item2.pattern !== 'Solid' ? ` (${item2.pattern})` : '';
+      
       if (pairScore >= 8) {
-        strengths.push(`${item1.type} (${item1.color}) and ${item2.type} (${item2.color}) work excellently together`);
+        strengths.push(`${item1.type} (${item1Colors}${item1Pattern}) and ${item2.type} (${item2Colors}${item2Pattern}) work excellently together`);
       } else if (pairScore >= 6) {
-        feedback.push(`${item1.type} (${item1.color}) and ${item2.type} (${item2.color}) are a good match`);
+        feedback.push(`${item1.type} (${item1Colors}${item1Pattern}) and ${item2.type} (${item2Colors}${item2Pattern}) are a good match`);
       } else if (pairScore < 5) {
         suggestions.push(`Consider changing ${item1.type} or ${item2.type} - the colors/types don't complement well`);
       }
@@ -102,7 +116,12 @@ export function calculateOutfitRating(outfit: OutfitCombination): OutfitRating {
 
   // Check for neutral colors (they work well with everything)
   const neutralColors = ['Black', 'White', 'Gray', 'Beige', 'Navy'];
-  const hasNeutral = items.some(item => neutralColors.includes(item.color));
+  const hasNeutral = items.some(item => {
+    const allColors = item.colors && item.colors.length > 0 
+      ? [item.color, ...item.colors]
+      : [item.color];
+    return allColors.some(c => neutralColors.includes(c));
+  });
   if (hasNeutral && items.length > 1) {
     strengths.push('Neutral colors provide a solid foundation');
   }

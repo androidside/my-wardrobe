@@ -14,14 +14,17 @@ import {
 } from '@/components/ui/select';
 import {
   ClothingItemInput,
-  ClothingType,
+  ClothingCategory,
+  ClothingTag,
   ClothingSize,
   ClothingColor,
+  ClothingPattern,
   FormalityLevel,
   REGULAR_SIZES,
   SHOE_SIZES,
-  isFootwear,
+  isFootwearType,
   formatShoeSize,
+  CLOTHING_TYPES_BY_CATEGORY,
 } from '@/types/clothing';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUserProfile } from '@/services/firestore';
@@ -30,27 +33,23 @@ import { ClothingAnalysis } from '@/services/imageAnalysis';
 import { BRAND_LIST } from '@/data/brands';
 import { useWardrobeContext } from '@/contexts/WardrobeContext';
 
-const CLOTHING_TYPES: ClothingType[] = [
-  'T-shirt',
-  'Shirt',
-  'Jacket',
-  'Coat',
-  'Sweater',
-  'Hoodie',
-  'Pants',
-  'Jeans',
-  'Shorts',
-  'Skirt',
-  'Dress',
-  'Shoes',
-  'Sneakers',
-  'Boots',
-  'Sandals',
-  'Hat',
-  'Socks',
-  'Underwear',
-  'Accessories',
-  'Other',
+// Available tags
+const AVAILABLE_TAGS: ClothingTag[] = [
+  'Sportswear',
+  'Gym',
+  'Running',
+  'Outdoor',
+  'Formal',
+  'Casual',
+  'Beach',
+  'Winter',
+  'Summer',
+  'Workout',
+  'Travel',
+  'Party',
+  'Business',
+  'Athletic',
+  'Comfort',
 ];
 
 const COLORS: ClothingColor[] = [
@@ -82,10 +81,14 @@ export function AddClothingForm({ onSubmit, onCancel, existingItems = [], defaul
   const { user } = useAuth();
   const { wardrobes } = useWardrobeContext();
   const [imageBlob, setImageBlob] = useState<Blob | null>(null);
-  const [type, setType] = useState<ClothingType | ''>('');
+  const [category, setCategory] = useState<ClothingCategory | ''>('');
+  const [type, setType] = useState<string>('');
+  const [selectedTags, setSelectedTags] = useState<ClothingTag[]>([]);
   const [brand, setBrand] = useState('');
   const [size, setSize] = useState<ClothingSize | ''>('');
   const [color, setColor] = useState<ClothingColor | ''>('');
+  const [selectedColors, setSelectedColors] = useState<ClothingColor[]>([]);
+  const [pattern, setPattern] = useState<ClothingPattern>('Solid');
   const [cost, setCost] = useState('');
   const [formalityLevel, setFormalityLevel] = useState<FormalityLevel>(3); // Default to middle (3)
   const [notes, setNotes] = useState('');
@@ -207,20 +210,30 @@ export function AddClothingForm({ onSubmit, onCancel, existingItems = [], defaul
     loadProfile();
   }, [user]);
 
+  // Get available types for selected category
+  const availableTypes = category ? CLOTHING_TYPES_BY_CATEGORY[category] : [];
+  
   // Determine which sizes to show based on clothing type
-  const showingShoeSizes = type && isFootwear(type);
+  const showingShoeSizes = type && isFootwearType(type);
   const isPantsOrJeans = type === 'Pants' || type === 'Jeans';
   const availableSizes = showingShoeSizes ? SHOE_SIZES : REGULAR_SIZES;
+  
+  // Reset type when category changes
+  useEffect(() => {
+    if (category) {
+      setType(''); // Reset type when category changes
+    }
+  }, [category]);
 
   // Pre-populate size based on user profile when type changes
   useEffect(() => {
     if (type && userProfile) {
-      const isFootwearType = isFootwear(type);
+      const isFootwear = isFootwearType(type);
       const isPantsType = type === 'Pants' || type === 'Jeans';
       
       // Only pre-populate if size field is empty
       if (!size) {
-        if (isFootwearType) {
+        if (isFootwear) {
           // For footwear, use shoeSize from profile
           if (userProfile.shoeSize && SHOE_SIZES.includes(userProfile.shoeSize as any)) {
             setSize(userProfile.shoeSize as ClothingSize);
@@ -238,13 +251,13 @@ export function AddClothingForm({ onSubmit, onCancel, existingItems = [], defaul
         }
       } else {
         // If size is already set, validate it for the current type
-        const isFootwearType = isFootwear(type);
-        const isPantsType = type === 'Pants' || type === 'Jeans';
+        const isFootwear2 = isFootwearType(type);
+        const isPantsType2 = type === 'Pants' || type === 'Jeans';
         
-        if (isFootwearType && !SHOE_SIZES.includes(size as any)) {
+        if (isFootwear2 && !SHOE_SIZES.includes(size as any)) {
           // Size is invalid for footwear, clear it
           setSize('');
-        } else if (!isFootwearType && !isPantsType && !REGULAR_SIZES.includes(size as any)) {
+        } else if (!isFootwear2 && !isPantsType2 && !REGULAR_SIZES.includes(size as any)) {
           // Size is invalid for regular clothing (not pants), clear it
           setSize('');
         }
@@ -256,10 +269,10 @@ export function AddClothingForm({ onSubmit, onCancel, existingItems = [], defaul
   // Reset size when switching between different size types (if size is invalid)
   useEffect(() => {
     if (type && size) {
-      const isFootwearType = isFootwear(type);
+      const isFootwearTypeCheck = isFootwearType(type);
       const isPantsType = type === 'Pants' || type === 'Jeans';
       
-      if (isFootwearType) {
+      if (isFootwearTypeCheck) {
         // For footwear, size must be from SHOE_SIZES
         if (!SHOE_SIZES.includes(size as any)) {
           setSize('');
@@ -273,31 +286,6 @@ export function AddClothingForm({ onSubmit, onCancel, existingItems = [], defaul
       // For pants, any string is valid, so we don't clear it
     }
   }, [type, size]);
-
-  // Helper function to match detected type to ClothingType enum
-  const matchClothingType = (detectedType: string): ClothingType | null => {
-    const typeMap: Record<string, ClothingType> = {
-      'T-shirt': 'T-shirt',
-      'Shirt': 'Shirt',
-      'Jacket': 'Jacket',
-      'Coat': 'Coat',
-      'Sweater': 'Sweater',
-      'Hoodie': 'Hoodie',
-      'Pants': 'Pants',
-      'Jeans': 'Jeans',
-      'Shorts': 'Shorts',
-      'Skirt': 'Skirt',
-      'Dress': 'Dress',
-      'Shoes': 'Shoes',
-      'Sneakers': 'Sneakers',
-      'Boots': 'Boots',
-      'Sandals': 'Sandals',
-      'Hat': 'Hat',
-      'Accessories': 'Accessories',
-      'Other': 'Other',
-    };
-    return typeMap[detectedType] || null;
-  };
 
   // Helper function to match detected color to ClothingColor enum
   const matchColor = (detectedColor: string): ClothingColor | null => {
@@ -328,15 +316,28 @@ export function AddClothingForm({ onSubmit, onCancel, existingItems = [], defaul
     setAnalysisResult(analysis);
     setShowAnalysisDialog(true);
 
-    // Auto-fill type if detected and field is empty (type doesn't have options, so auto-fill it)
+    // Auto-fill category and type if detected and fields are empty
+    // Use category and type directly from analysis (now returned by imageAnalysis service)
+    if (analysis.category && !category) {
+      console.log('[AddClothingForm] Setting category to:', analysis.category);
+      setCategory(analysis.category);
+    }
     if (analysis.type && !type) {
-      console.log('[AddClothingForm] Attempting to match type:', analysis.type);
-      const matchedType = matchClothingType(analysis.type);
-      console.log('[AddClothingForm] Matched type:', matchedType);
-      if (matchedType) {
-        console.log('[AddClothingForm] Setting type to:', matchedType);
-        setType(matchedType);
+      console.log('[AddClothingForm] Setting type to:', analysis.type);
+      setType(analysis.type);
+    }
+    // Auto-fill color if detected and field is empty
+    if (analysis.color && !color) {
+      const matchedColor = matchColor(analysis.color);
+      if (matchedColor) {
+        console.log('[AddClothingForm] Setting color to:', matchedColor);
+        setColor(matchedColor);
       }
+    }
+    // Auto-fill pattern if detected and field is empty
+    if (analysis.pattern && pattern === 'Solid') {
+      console.log('[AddClothingForm] Setting pattern to:', analysis.pattern);
+      setPattern(analysis.pattern);
     }
   };
 
@@ -366,7 +367,7 @@ export function AddClothingForm({ onSubmit, onCancel, existingItems = [], defaul
       alert('Please add a photo');
       return;
     }
-    if (!type || !brand || !size || !color || !cost) {
+    if (!category || !type || !brand || !size || !color || !cost) {
       alert('Please fill in all required fields');
       return;
     }
@@ -381,10 +382,14 @@ export function AddClothingForm({ onSubmit, onCancel, existingItems = [], defaul
       setIsSubmitting(true);
 
       const item: ClothingItemInput = {
+        category: category as ClothingCategory,
         type,
+        tags: selectedTags.length > 0 ? selectedTags : undefined,
         brand,
         size,
         color,
+        colors: selectedColors.length > 0 ? selectedColors : undefined,
+        pattern: pattern !== 'Solid' ? pattern : undefined,
         cost: costNumber,
         formalityLevel,
         imageBlob,
@@ -395,10 +400,14 @@ export function AddClothingForm({ onSubmit, onCancel, existingItems = [], defaul
 
       // Reset form
       setImageBlob(null);
+      setCategory('');
       setType('');
+      setSelectedTags([]);
       setBrand('');
       setSize('');
       setColor('');
+      setSelectedColors([]);
+      setPattern('Solid');
       setCost('');
       setFormalityLevel(3);
       setNotes('');
@@ -452,23 +461,88 @@ export function AddClothingForm({ onSubmit, onCancel, existingItems = [], defaul
         </div>
       )}
 
-      {/* Clothing Type */}
+      {/* Category */}
       <div>
-        <Label htmlFor="type" className="text-base">
-          Type *
+        <Label htmlFor="category" className="text-base">
+          Category *
         </Label>
-        <Select value={type} onValueChange={(value) => setType(value as ClothingType)}>
-          <SelectTrigger id="type" className="mt-1">
-            <SelectValue placeholder="Select clothing type" />
+        <Select 
+          value={category} 
+          onValueChange={(value) => setCategory(value as ClothingCategory)}
+        >
+          <SelectTrigger id="category" className="mt-1">
+            <SelectValue placeholder="Select category" />
           </SelectTrigger>
           <SelectContent>
-            {CLOTHING_TYPES.map((t) => (
-              <SelectItem key={t} value={t}>
-                {t}
+            {Object.keys(CLOTHING_TYPES_BY_CATEGORY).map((cat) => (
+              <SelectItem key={cat} value={cat}>
+                {cat}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      {/* Type (filtered by category) */}
+      <div>
+        <Label htmlFor="type" className="text-base">
+          Type *
+        </Label>
+        <Select 
+          value={type} 
+          onValueChange={(value) => setType(value)}
+          disabled={!category}
+        >
+          <SelectTrigger id="type" className="mt-1">
+            <SelectValue placeholder={category ? "Select type" : "Select category first"} />
+          </SelectTrigger>
+          <SelectContent>
+            {category ? (
+              availableTypes.map((t) => (
+                <SelectItem key={t} value={t}>
+                  {t}
+                </SelectItem>
+              ))
+            ) : (
+              <div className="px-2 py-1.5 text-sm text-gray-500">
+                Please select a category first
+              </div>
+            )}
+          </SelectContent>
+        </Select>
+        {!category && (
+          <p className="text-xs text-gray-500 mt-1">Please select a category first</p>
+        )}
+      </div>
+
+      {/* Tags (multi-select) */}
+      <div>
+        <Label className="text-base mb-2 block">Tags (Optional)</Label>
+        <div className="flex flex-wrap gap-2 mt-1">
+          {AVAILABLE_TAGS.map((tag) => {
+            const isSelected = selectedTags.includes(tag);
+            return (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => {
+                  if (isSelected) {
+                    setSelectedTags(selectedTags.filter(t => t !== tag));
+                  } else {
+                    setSelectedTags([...selectedTags, tag]);
+                  }
+                }}
+                className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                  isSelected
+                    ? 'bg-indigo-600 text-white border-indigo-600'
+                    : 'bg-white text-gray-700 border-gray-300 hover:border-indigo-300 hover:bg-indigo-50'
+                }`}
+              >
+                {tag}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Brand */}
@@ -549,14 +623,14 @@ export function AddClothingForm({ onSubmit, onCancel, existingItems = [], defaul
         )}
       </div>
 
-      {/* Color */}
+      {/* Primary Color */}
       <div>
         <Label htmlFor="color" className="text-base">
-          Color *
+          Primary Color *
         </Label>
         <Select value={color} onValueChange={(value) => setColor(value as ClothingColor)}>
           <SelectTrigger id="color" className="mt-1">
-            <SelectValue placeholder="Select color" />
+            <SelectValue placeholder="Select primary color" />
           </SelectTrigger>
           <SelectContent>
             {COLORS.map((c) => (
@@ -565,6 +639,75 @@ export function AddClothingForm({ onSubmit, onCancel, existingItems = [], defaul
               </SelectItem>
             ))}
           </SelectContent>
+        </Select>
+      </div>
+
+      {/* Additional Colors (Multi-select) */}
+      <div>
+        <Label className="text-base mb-2 block">Additional Colors (Optional)</Label>
+        {selectedColors.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-2">
+            {selectedColors.map((col, index) => (
+              <div key={index} className="flex items-center gap-1 px-3 py-1 bg-indigo-100 rounded-full">
+                <span className="text-sm font-medium text-indigo-900">{col}</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedColors(selectedColors.filter((_, i) => i !== index))}
+                  className="text-indigo-600 hover:text-indigo-800 ml-1 text-lg leading-none"
+                  aria-label={`Remove ${col}`}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <Select
+          value=""
+          onValueChange={(value) => {
+            if (value && !selectedColors.includes(value as ClothingColor) && value !== color) {
+              setSelectedColors([...selectedColors, value as ClothingColor]);
+            }
+          }}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Add another color" />
+          </SelectTrigger>
+          <SelectContent>
+            {COLORS.filter((c) => c !== color && !selectedColors.includes(c)).map((c) => (
+              <SelectItem key={c} value={c}>
+                {c}
+              </SelectItem>
+            ))}
+            {COLORS.filter((c) => c !== color && !selectedColors.includes(c)).length === 0 && (
+              <div className="px-2 py-1.5 text-sm text-gray-500">All colors added</div>
+            )}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-gray-500 mt-1">Add additional colors for multicolor items</p>
+      </div>
+
+      {/* Pattern Selection */}
+      <div>
+        <Label htmlFor="pattern" className="text-base">
+          Pattern (Optional)
+        </Label>
+        <Select value={pattern} onValueChange={(value) => setPattern(value as ClothingPattern)}>
+          <SelectTrigger id="pattern" className="mt-1">
+            <SelectValue />
+          </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Solid">Solid</SelectItem>
+              <SelectItem value="Stripes">Stripes</SelectItem>
+              <SelectItem value="Checks">Checks</SelectItem>
+              <SelectItem value="Plaid">Plaid</SelectItem>
+              <SelectItem value="Polka Dots">Polka Dots</SelectItem>
+              <SelectItem value="Floral">Floral</SelectItem>
+              <SelectItem value="Abstract">Abstract</SelectItem>
+              <SelectItem value="Geometric">Geometric</SelectItem>
+              <SelectItem value="Corduroy">Corduroy</SelectItem>
+              <SelectItem value="Other">Other</SelectItem>
+            </SelectContent>
         </Select>
       </div>
 

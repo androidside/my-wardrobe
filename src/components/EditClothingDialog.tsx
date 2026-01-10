@@ -20,42 +20,40 @@ import {
 import {
   ClothingItem,
   ClothingItemInput,
-  ClothingType,
+  ClothingCategory,
+  ClothingTag,
   ClothingSize,
   ClothingColor,
+  ClothingPattern,
   FormalityLevel,
   REGULAR_SIZES,
   SHOE_SIZES,
-  isFootwear,
+  isFootwearType,
   formatShoeSize,
+  CLOTHING_TYPES_BY_CATEGORY,
+  getCategoryForType,
 } from '@/types/clothing';
 import { storageService } from '@/utils/storage';
 import { BRAND_LIST } from '@/data/brands';
-import { Wardrobe } from '@/types/wardrobe';
 import { useWardrobeContext } from '@/contexts/WardrobeContext';
 
-
-const CLOTHING_TYPES: ClothingType[] = [
-  'T-shirt',
-  'Shirt',
-  'Jacket',
-  'Coat',
-  'Sweater',
-  'Hoodie',
-  'Pants',
-  'Jeans',
-  'Shorts',
-  'Skirt',
-  'Dress',
-  'Shoes',
-  'Sneakers',
-  'Boots',
-  'Sandals',
-  'Hat',
-  'Socks',
-  'Underwear',
-  'Accessories',
-  'Other',
+// Available tags
+const AVAILABLE_TAGS: ClothingTag[] = [
+  'Sportswear',
+  'Gym',
+  'Running',
+  'Outdoor',
+  'Formal',
+  'Casual',
+  'Beach',
+  'Winter',
+  'Summer',
+  'Workout',
+  'Travel',
+  'Party',
+  'Business',
+  'Athletic',
+  'Comfort',
 ];
 
 const COLORS: ClothingColor[] = [
@@ -94,10 +92,14 @@ export function EditClothingDialog({
   const { wardrobes } = useWardrobeContext();
   const [imageBlob, setImageBlob] = useState<Blob | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [type, setType] = useState<ClothingType>('T-shirt');
+  const [category, setCategory] = useState<ClothingCategory | ''>('');
+  const [type, setType] = useState<string>('');
+  const [selectedTags, setSelectedTags] = useState<ClothingTag[]>([]);
   const [brand, setBrand] = useState('');
   const [size, setSize] = useState<ClothingSize>('M');
   const [color, setColor] = useState<ClothingColor>('Black');
+  const [selectedColors, setSelectedColors] = useState<ClothingColor[]>([]);
+  const [pattern, setPattern] = useState<ClothingPattern>('Solid');
   const [cost, setCost] = useState('');
   const [formalityLevel, setFormalityLevel] = useState<FormalityLevel>(3);
   const [notes, setNotes] = useState('');
@@ -191,9 +193,22 @@ export function EditClothingDialog({
     brandInputRef.current?.focus();
   };
 
+  // Get available types for selected category
+  const availableTypes = category ? CLOTHING_TYPES_BY_CATEGORY[category] : [];
+  
   // Determine which sizes to show based on clothing type
-  const showingShoeSizes = type && isFootwear(type);
+  const showingShoeSizes = type && isFootwearType(type);
   const availableSizes = showingShoeSizes ? SHOE_SIZES : REGULAR_SIZES;
+
+  // Reset type when category changes
+  useEffect(() => {
+    if (category && type) {
+      // If current type is not in the new category, reset it
+      if (!availableTypes.includes(type)) {
+        setType('');
+      }
+    }
+  }, [category]);
 
   // Reset size when switching between footwear and regular clothing
   useEffect(() => {
@@ -204,15 +219,22 @@ export function EditClothingDialog({
         setSize(showingShoeSizes ? '40' : 'M');
       }
     }
-  }, [type]);
+  }, [type, size, showingShoeSizes, availableSizes]);
 
   // Load item data when dialog opens
   useEffect(() => {
     if (item && open) {
-      setType(item.type);
+      // Load category and type (migrated items will have category, old items won't)
+      // If no category, infer it from type
+      const itemCategory = item.category || (item.type ? getCategoryForType(item.type) : '');
+      setCategory(itemCategory);
+      setType(item.type || '');
+      setSelectedTags(item.tags || []);
       setBrand(item.brand);
       setSize(item.size);
       setColor(item.color);
+      setSelectedColors(item.colors || []);
+      setPattern(item.pattern || 'Solid');
       setCost(item.cost.toString());
       setFormalityLevel(item.formalityLevel || 3);
       setNotes(item.notes || '');
@@ -231,7 +253,7 @@ export function EditClothingDialog({
     if (!item) return;
 
     // Validation
-    if (!brand || !cost) {
+    if (!category || !type || !brand || !cost) {
       alert('Please fill in all required fields');
       return;
     }
@@ -246,10 +268,14 @@ export function EditClothingDialog({
       setIsSubmitting(true);
 
       const updates: Partial<ClothingItemInput> = {
+        category: category as ClothingCategory,
         type,
+        tags: selectedTags.length > 0 ? selectedTags : undefined,
         brand,
         size,
         color,
+        colors: selectedColors.length > 0 ? selectedColors : undefined,
+        pattern: pattern !== 'Solid' ? pattern : undefined,
         cost: costNumber,
         formalityLevel,
         notes: notes || undefined,
@@ -289,23 +315,88 @@ export function EditClothingDialog({
             </p>
           </div>
 
-          {/* Clothing Type */}
+          {/* Category */}
           <div>
-            <Label htmlFor="edit-type" className="text-base">
-              Type *
+            <Label htmlFor="edit-category" className="text-base">
+              Category *
             </Label>
-            <Select value={type} onValueChange={(value) => setType(value as ClothingType)}>
-              <SelectTrigger id="edit-type" className="mt-1">
-                <SelectValue />
+            <Select 
+              value={category} 
+              onValueChange={(value) => setCategory(value as ClothingCategory)}
+            >
+              <SelectTrigger id="edit-category" className="mt-1">
+                <SelectValue placeholder="Select category" />
               </SelectTrigger>
               <SelectContent>
-                {CLOTHING_TYPES.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {t}
+                {Object.keys(CLOTHING_TYPES_BY_CATEGORY).map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Type (filtered by category) */}
+          <div>
+            <Label htmlFor="edit-type" className="text-base">
+              Type *
+            </Label>
+            <Select 
+              value={type} 
+              onValueChange={(value) => setType(value)}
+              disabled={!category}
+            >
+              <SelectTrigger id="edit-type" className="mt-1">
+                <SelectValue placeholder={category ? "Select type" : "Select category first"} />
+              </SelectTrigger>
+              <SelectContent>
+                {category ? (
+                  availableTypes.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <div className="px-2 py-1.5 text-sm text-gray-500">
+                    Please select a category first
+                  </div>
+                )}
+              </SelectContent>
+            </Select>
+            {!category && (
+              <p className="text-xs text-gray-500 mt-1">Please select a category first</p>
+            )}
+          </div>
+
+          {/* Tags (multi-select) */}
+          <div>
+            <Label className="text-base mb-2 block">Tags (Optional)</Label>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {AVAILABLE_TAGS.map((tag) => {
+                const isSelected = selectedTags.includes(tag);
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => {
+                      if (isSelected) {
+                        setSelectedTags(selectedTags.filter(t => t !== tag));
+                      } else {
+                        setSelectedTags([...selectedTags, tag]);
+                      }
+                    }}
+                    className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                      isSelected
+                        ? 'bg-indigo-600 text-white border-indigo-600'
+                        : 'bg-white text-gray-700 border-gray-300 hover:border-indigo-300 hover:bg-indigo-50'
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Brand */}
@@ -369,10 +460,10 @@ export function EditClothingDialog({
             </Select>
           </div>
 
-          {/* Color */}
+          {/* Primary Color */}
           <div>
             <Label htmlFor="edit-color" className="text-base">
-              Color *
+              Primary Color *
             </Label>
             <Select value={color} onValueChange={(value) => setColor(value as ClothingColor)}>
               <SelectTrigger id="edit-color" className="mt-1">
@@ -384,6 +475,75 @@ export function EditClothingDialog({
                     {c}
                   </SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Additional Colors (Multi-select) */}
+          <div>
+            <Label className="text-base mb-2 block">Additional Colors (Optional)</Label>
+            {selectedColors.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {selectedColors.map((col, index) => (
+                  <div key={index} className="flex items-center gap-1 px-3 py-1 bg-indigo-100 rounded-full">
+                    <span className="text-sm font-medium text-indigo-900">{col}</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedColors(selectedColors.filter((_, i) => i !== index))}
+                      className="text-indigo-600 hover:text-indigo-800 ml-1 text-lg leading-none"
+                      aria-label={`Remove ${col}`}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <Select
+              value=""
+              onValueChange={(value) => {
+                if (value && !selectedColors.includes(value as ClothingColor) && value !== color) {
+                  setSelectedColors([...selectedColors, value as ClothingColor]);
+                }
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Add another color" />
+              </SelectTrigger>
+              <SelectContent>
+                {COLORS.filter((c) => c !== color && !selectedColors.includes(c)).map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {c}
+                  </SelectItem>
+                ))}
+                {COLORS.filter((c) => c !== color && !selectedColors.includes(c)).length === 0 && (
+                  <div className="px-2 py-1.5 text-sm text-gray-500">All colors added</div>
+                )}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-gray-500 mt-1">Add additional colors for multicolor items</p>
+          </div>
+
+          {/* Pattern Selection */}
+          <div>
+            <Label htmlFor="edit-pattern" className="text-base">
+              Pattern (Optional)
+            </Label>
+            <Select value={pattern} onValueChange={(value) => setPattern(value as ClothingPattern)}>
+              <SelectTrigger id="edit-pattern" className="mt-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Solid">Solid</SelectItem>
+                <SelectItem value="Stripes">Stripes</SelectItem>
+                <SelectItem value="Checks">Checks</SelectItem>
+                <SelectItem value="Plaid">Plaid</SelectItem>
+                <SelectItem value="Polka Dots">Polka Dots</SelectItem>
+                <SelectItem value="Floral">Floral</SelectItem>
+                <SelectItem value="Abstract">Abstract</SelectItem>
+                <SelectItem value="Geometric">Geometric</SelectItem>
+                <SelectItem value="Corduroy">Corduroy</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
               </SelectContent>
             </Select>
           </div>

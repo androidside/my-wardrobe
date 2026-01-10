@@ -49,7 +49,7 @@ function AppContent() {
   const [editingItem, setEditingItem] = useState<ClothingItem | null>(null);
   const [activePage, setActivePage] = useState<'wardrobe' | 'fitting-room' | 'profile'>('wardrobe');
   const [selectedItem, setSelectedItem] = useState<ClothingItem | null>(null);
-  const [selectedType, setSelectedType] = useState<ClothingItem['type'] | null>(null); // Selected type category
+  const [selectedType, setSelectedType] = useState<string | null>(null); // Selected type category
   const [filterBrand, setFilterBrand] = useState<string | 'All'>('All');
   const [filterColor, setFilterColor] = useState<string | 'All'>('All');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);

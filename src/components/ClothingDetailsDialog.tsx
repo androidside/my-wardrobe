@@ -80,7 +80,15 @@ export function ClothingDetailsDialog({ item, open, onOpenChange }: ClothingDeta
               <h3 className="text-lg font-semibold">{item.brand} — {item.type}</h3>
               <div className="mt-2 text-sm text-gray-600">
                 <div><strong>Size:</strong> {item.size}</div>
-                <div><strong>Color:</strong> {item.color}</div>
+                <div>
+                  <strong>Color:</strong> {item.color}
+                  {item.colors && item.colors.length > 0 && (
+                    <span>, {item.colors.join(', ')}</span>
+                  )}
+                </div>
+                {item.pattern && item.pattern !== 'Solid' && (
+                  <div><strong>Pattern:</strong> {item.pattern}</div>
+                )}
                 <div><strong>Cost:</strong> ${item.cost.toFixed(2)}</div>
                 {item.formalityLevel && (
                   <div>
