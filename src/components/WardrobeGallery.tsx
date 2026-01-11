@@ -137,11 +137,11 @@ export function WardrobeGallery({ items, allItems, selectedType, selectedCategor
   // Show category view when no type is selected and no category is selected
   if (selectedType === null && selectedCategory === null) {
     return (
-      <div className="h-[calc(100vh-8rem)] min-h-[500px] flex items-center justify-center px-4 sm:px-6 lg:px-8 pt-0 pb-6">
+      <div className="h-[calc(100vh-8rem)] min-h-[500px] flex items-start justify-center px-4 sm:px-6 lg:px-8 pt-0 pb-6">
         <div 
           className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 w-full max-w-5xl mx-auto gap-x-3 sm:gap-x-4 gap-y-2 sm:gap-y-3"
           style={{
-            alignContent: 'center',
+            alignContent: 'start',
           }}
         >
           {categories.map((category) => {
@@ -161,18 +161,11 @@ export function WardrobeGallery({ items, allItems, selectedType, selectedCategor
                 onClick={() => onCategorySelect(category)}
                 className="group relative bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 overflow-hidden border-2 border-gray-200 hover:border-indigo-400 transform hover:-translate-y-1 flex flex-col aspect-square"
               >
-                <div className="flex-1 relative bg-gradient-to-br from-gray-50 to-white overflow-hidden">
-                  {previewImageUrl ? (
-                    <img
-                      src={previewImageUrl}
-                      alt={category}
-                      className="absolute inset-0 w-full h-full object-cover opacity-20 group-hover:opacity-30 transition-opacity"
-                    />
-                  ) : null}
+                <div className="flex-1 relative bg-white overflow-hidden flex items-center justify-center">
                   <img
                     src={getTypeIconPath(representativeType)}
                     alt={category}
-                    className="absolute inset-0 w-full h-full object-contain p-4 sm:p-6 md:p-8 z-10"
+                    className="w-full h-full object-contain p-4 sm:p-6 md:p-8"
                     onError={(e) => {
                       // If image fails to load, replace with emoji
                       const target = e.target as HTMLImageElement;
@@ -184,12 +177,11 @@ export function WardrobeGallery({ items, allItems, selectedType, selectedCategor
                     }}
                   />
                   <span 
-                    className="absolute inset-0 hidden items-center justify-center text-4xl sm:text-5xl md:text-6xl z-10 bg-white"
+                    className="absolute inset-0 hidden items-center justify-center text-4xl sm:text-5xl md:text-6xl bg-white"
                     style={{ display: 'none' }}
                   >
                     {TYPE_EMOJIS[representativeType] || '👕'}
                   </span>
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none" />
                 </div>
                 <div className="p-3 sm:p-4 text-center bg-white flex-shrink-0">
                   <h3 className="font-bold text-gray-900 text-sm sm:text-base md:text-lg mb-1">{category}</h3>
@@ -239,18 +231,11 @@ export function WardrobeGallery({ items, allItems, selectedType, selectedCategor
                 onClick={() => onTypeSelect(type)}
                 className="group relative bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 overflow-hidden border-2 border-gray-200 hover:border-indigo-400 transform hover:-translate-y-1 flex flex-col aspect-square"
               >
-                <div className="flex-1 relative bg-gradient-to-br from-gray-50 to-white overflow-hidden">
-                  {previewImageUrl ? (
-                    <img
-                      src={previewImageUrl}
-                      alt={type}
-                      className="absolute inset-0 w-full h-full object-cover opacity-20 group-hover:opacity-30 transition-opacity"
-                    />
-                  ) : null}
+                <div className="flex-1 relative bg-white overflow-hidden flex items-center justify-center">
                   <img
                     src={getTypeIconPath(type)}
                     alt={type}
-                    className="absolute inset-0 w-full h-full object-contain p-3 sm:p-4 md:p-5 z-10"
+                    className="w-full h-full object-contain p-3 sm:p-4 md:p-5"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       target.style.display = 'none';
@@ -261,12 +246,11 @@ export function WardrobeGallery({ items, allItems, selectedType, selectedCategor
                     }}
                   />
                   <span 
-                    className="absolute inset-0 hidden items-center justify-center text-3xl sm:text-4xl md:text-5xl z-10 bg-white"
+                    className="absolute inset-0 hidden items-center justify-center text-3xl sm:text-4xl md:text-5xl bg-white"
                     style={{ display: 'none' }}
                   >
                     {TYPE_EMOJIS[type] || '👕'}
                   </span>
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none" />
                 </div>
                 <div className="p-2 sm:p-3 text-center bg-white flex-shrink-0">
                   <h3 className="font-bold text-gray-900 text-xs sm:text-sm md:text-base truncate">{type}</h3>
