@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "generate:compatibility": "tsx scripts/generateCompatibilityMatrix.ts"
+    "generate:compatibility": "tsx scripts/generateCompatibilityMatrix.ts",
+    "convert:icons": "tsx scripts/convertIconsToTransparent.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
@@ -43,6 +44,7 @@
     "eslint-plugin-react-refresh": "^0.4.16",
     "globals": "^15.14.0",
     "postcss": "^8.5.6",
+    "sharp": "^0.34.5",
     "tailwindcss": "^4.0.0",
     "tsx": "^4.21.0",
     "typescript": "~5.6.2",
