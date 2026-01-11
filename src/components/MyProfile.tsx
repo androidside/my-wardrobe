@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { LogOut, Lock, Mail, Upload, X, Camera } from 'lucide-react';
+import { LogOut, Lock, Mail, Upload, X, Camera, Plus, Edit2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,9 +18,18 @@ import { updateUserPassword } from '@/services/auth';
 import { SHOE_SIZES, REGULAR_SIZES } from '@/types/clothing';
 import { COUNTRIES } from '@/data/countries';
 import { uploadProfilePicture } from '@/services/storage';
+import { useWardrobeContext } from '@/contexts/WardrobeContext';
+import { CreateWardrobeDialog } from './CreateWardrobeDialog';
+import { EditWardrobeDialog } from './EditWardrobeDialog';
+import { DeleteWardrobeDialog } from './DeleteWardrobeDialog';
 
 export function MyProfile() {
   const { user, logout } = useAuth();
+  const {
+    wardrobes,
+    currentWardrobeId,
+    getItemCount,
+  } = useWardrobeContext();
   const [profile, setProfile] = useState<UserProfile>({
     firstName: '',
     lastName: '',
@@ -52,6 +61,27 @@ export function MyProfile() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [updatingPassword, setUpdatingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  
+  // Wardrobe management state
+  const [itemCounts, setItemCounts] = useState<Record<string, number>>({});
+  const [showCreateWardrobeDialog, setShowCreateWardrobeDialog] = useState(false);
+  const [editingWardrobeId, setEditingWardrobeId] = useState<string | null>(null);
+  const [deletingWardrobeId, setDeletingWardrobeId] = useState<string | null>(null);
+  
+  // Load item counts for all wardrobes
+  useEffect(() => {
+    const loadCounts = async () => {
+      const counts: Record<string, number> = {};
+      for (const wardrobe of wardrobes) {
+        counts[wardrobe.id] = await getItemCount(wardrobe.id);
+      }
+      setItemCounts(counts);
+    };
+
+    if (wardrobes.length > 0) {
+      loadCounts();
+    }
+  }, [wardrobes, getItemCount]);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -146,6 +176,9 @@ export function MyProfile() {
       return;
     }
 
+    // Declare previewUrl outside try block for cleanup in catch
+    let previewUrl: string | undefined;
+
     try {
       setUploadingPicture(true);
       
@@ -155,7 +188,7 @@ export function MyProfile() {
       }
 
       // Create temporary preview for immediate feedback
-      const previewUrl = URL.createObjectURL(file);
+      previewUrl = URL.createObjectURL(file);
       setProfilePicturePreview(previewUrl);
 
       // Upload to Firebase Storage
@@ -590,6 +623,64 @@ export function MyProfile() {
           </Button>
         </div>
 
+        {/* Manage My Wardrobes Section */}
+        <div className="mt-8 pt-8 border-t border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">👔 Manage My Wardrobes</h3>
+          
+          {wardrobes.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500 mb-4">No wardrobes found. Create your first one!</p>
+              <Button onClick={() => setShowCreateWardrobeDialog(true)}>
+                <Plus className="h-4 w-4 mr-2" /> Create New Wardrobe
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <Button onClick={() => setShowCreateWardrobeDialog(true)} className="w-full">
+                <Plus className="h-4 w-4 mr-2" /> Create New Wardrobe
+              </Button>
+              {wardrobes.map((wardrobe) => {
+                const itemCount = itemCounts[wardrobe.id] ?? 0;
+                return (
+                  <div 
+                    key={wardrobe.id} 
+                    className={`flex items-center justify-between p-3 border rounded-md ${
+                      wardrobe.id === currentWardrobeId ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 bg-white'
+                    }`}
+                  >
+                    <div className="flex-1">
+                      <p className={`font-medium ${wardrobe.id === currentWardrobeId ? 'text-indigo-700' : 'text-gray-800'}`}>
+                        {wardrobe.name}
+                        <span className="ml-2 text-sm text-gray-500">({itemCount} items)</span>
+                        {wardrobe.id === currentWardrobeId && <span className="ml-2 text-xs px-2 py-0.5 bg-indigo-200 text-indigo-800 rounded-full">Current</span>}
+                      </p>
+                    </div>
+                    <div className="flex gap-2 ml-4">
+                      <Button 
+                        variant="outline" 
+                        size="icon" 
+                        onClick={() => setEditingWardrobeId(wardrobe.id)}
+                        title="Edit wardrobe"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        size="icon" 
+                        onClick={() => setDeletingWardrobeId(wardrobe.id)}
+                        disabled={wardrobes.length <= 1} // Disable delete if only one wardrobe
+                        title={wardrobes.length <= 1 ? "Cannot delete the last wardrobe" : "Delete wardrobe"}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {/* Password Update Section */}
         <div className="mt-8 pt-8 border-t border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Security</h3>
@@ -700,6 +791,30 @@ export function MyProfile() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Wardrobe Management Dialogs */}
+      {showCreateWardrobeDialog && (
+        <CreateWardrobeDialog
+          open={showCreateWardrobeDialog}
+          onOpenChange={setShowCreateWardrobeDialog}
+        />
+      )}
+
+      {editingWardrobeId && (
+        <EditWardrobeDialog
+          wardrobeId={editingWardrobeId}
+          open={!!editingWardrobeId}
+          onOpenChange={(open) => !open && setEditingWardrobeId(null)}
+        />
+      )}
+
+      {deletingWardrobeId && (
+        <DeleteWardrobeDialog
+          wardrobeId={deletingWardrobeId}
+          open={!!deletingWardrobeId}
+          onOpenChange={(open) => !open && setDeletingWardrobeId(null)}
+        />
+      )}
     </div>
   );
 }
