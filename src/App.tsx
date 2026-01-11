@@ -281,7 +281,7 @@ function AppContent() {
       )}
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 pt-0 pb-24 sm:px-6 lg:px-8">
+        <main className="max-w-7xl mx-auto px-4 pt-4 pb-24 sm:px-6 lg:px-8">
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
             {error}
@@ -315,10 +315,10 @@ function AppContent() {
       {activePage === 'wardrobe' && (
         <Button
           onClick={() => setShowAddDialog(true)}
-          className="fixed bottom-20 right-4 sm:right-6 h-14 w-14 rounded-full shadow-lg bg-indigo-600 hover:bg-indigo-700 text-white z-40 flex items-center justify-center p-0"
-          size="icon"
+          className="fixed bottom-24 right-4 sm:right-6 h-12 px-6 rounded-full shadow-lg bg-indigo-600 hover:bg-indigo-700 text-white z-40 flex items-center gap-2 font-semibold"
         >
-          <Plus className="h-6 w-6" />
+          <Plus className="h-5 w-5" />
+          <span>Add item</span>
         </Button>
       )}
 

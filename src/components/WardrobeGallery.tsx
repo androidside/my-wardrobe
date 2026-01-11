@@ -136,24 +136,12 @@ export function WardrobeGallery({ items, allItems, selectedType, selectedCategor
 
   // Show category view when no type is selected and no category is selected
   if (selectedType === null && selectedCategory === null) {
-    // Calculate grid rows to allow up to 3 rows (max 5 categories)
-    const numCategories = categories.length;
-    let gridRows = '1fr';
-    if (numCategories <= 2) {
-      gridRows = '1fr';
-    } else if (numCategories <= 4) {
-      gridRows = 'repeat(2, 1fr)';
-    } else {
-      gridRows = 'repeat(3, 1fr)';
-    }
-    
     return (
       <div className="h-[calc(100vh-8rem)] min-h-[500px] flex items-center justify-center px-4 sm:px-6 lg:px-8 pt-0 pb-6">
         <div 
-          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 w-full max-w-5xl mx-auto gap-3 sm:gap-4"
+          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 w-full max-w-5xl mx-auto gap-x-3 sm:gap-x-4 gap-y-2 sm:gap-y-3"
           style={{
-            gridTemplateRows: gridRows,
-            height: '100%',
+            alignContent: 'center',
           }}
         >
           {categories.map((category) => {
@@ -222,16 +210,6 @@ export function WardrobeGallery({ items, allItems, selectedType, selectedCategor
     const categoryTypes = Object.keys(itemsByCategory[selectedCategory]).sort();
     const numTypes = categoryTypes.length;
     
-    // Calculate grid rows to allow up to 3 rows
-    let gridRows = '1fr';
-    if (numTypes <= 3) {
-      gridRows = '1fr';
-    } else if (numTypes <= 6) {
-      gridRows = 'repeat(2, 1fr)';
-    } else {
-      gridRows = 'repeat(3, 1fr)';
-    }
-    
     return (
       <div className="h-[calc(100vh-8rem)] min-h-[500px] flex flex-col space-y-4 px-4 sm:px-6 lg:px-8 pt-0 pb-6">
         {/* Back button */}
@@ -245,9 +223,8 @@ export function WardrobeGallery({ items, allItems, selectedType, selectedCategor
 
         
         <div 
-          className="flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 w-full max-w-5xl mx-auto gap-3 sm:gap-4"
+          className="flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 w-full max-w-5xl mx-auto gap-x-3 sm:gap-x-4 gap-y-2 sm:gap-y-3"
           style={{
-            gridTemplateRows: gridRows,
             alignContent: 'start',
           }}
         >
