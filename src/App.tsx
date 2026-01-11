@@ -220,20 +220,17 @@ function AppContent() {
               <div className="flex-1">
                 <WardrobeSelector onWardrobeChange={handleWardrobeChange} />
               </div>
-              <div className="text-right">
-                <p className="text-sm text-gray-600">
-                  {filteredItems.length} {filteredItems.length === 1 ? 'item' : 'items'}
-                </p>
-                {(selectedType !== null || filterBrand !== 'All' || filterColor !== 'All') && (
-                  <p className="text-xs text-gray-500 mt-0.5">
+              {(selectedType !== null || filterBrand !== 'All' || filterColor !== 'All') && (
+                <div className="text-right">
+                  <p className="text-xs text-gray-500">
                     {selectedType !== null && <span>{selectedType}</span>}
                     {selectedType !== null && filterBrand !== 'All' && <span> • </span>}
                     {filterBrand !== 'All' && <span>{filterBrand}</span>}
                     {filterBrand !== 'All' && filterColor !== 'All' && <span> • </span>}
                     {filterColor !== 'All' && <span>{filterColor}</span>}
                   </p>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -277,7 +274,7 @@ function AppContent() {
       )}
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8 pb-24 sm:px-6 lg:px-8">
+      <main className="max-w-7xl mx-auto px-4 pt-0 pb-24 sm:px-6 lg:px-8">
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
             {error}
