@@ -60,15 +60,16 @@ interface WardrobeGalleryProps {
   items: ClothingItem[];
   allItems: ClothingItem[]; // All items for category view
   selectedType: string | null; // Currently selected type (null = show categories, string = show items of that type)
+  selectedCategory: ClothingCategory | null; // Currently selected category (controlled from parent)
   onTypeSelect: (type: string | null) => void; // Callback when type is selected
+  onCategorySelect: (category: ClothingCategory | null) => void; // Callback when category is selected
   onEdit: (item: ClothingItem) => void;
   onDelete: (id: string) => void;
   onView?: (item: ClothingItem) => void;
 }
 
-export function WardrobeGallery({ items, allItems, selectedType, onTypeSelect, onEdit, onDelete, onView }: WardrobeGalleryProps) {
+export function WardrobeGallery({ items, allItems, selectedType, selectedCategory, onTypeSelect, onCategorySelect, onEdit, onDelete, onView }: WardrobeGalleryProps) {
   const [imageUrls, setImageUrls] = useState<Record<string, string | null>>({});
-  const [selectedCategory, setSelectedCategory] = useState<ClothingCategory | null>(null);
   
   // When a type is selected, remember its category for navigation
   // This ensures we can go back to the types view when clicking back from items view
@@ -78,9 +79,9 @@ export function WardrobeGallery({ items, allItems, selectedType, onTypeSelect, o
       const typeCategory = items.find(i => i.type === selectedType)?.category || getCategoryForType(selectedType);
       // Always set the category to match the selected type
       // This ensures proper navigation when going back from items view
-      setSelectedCategory(typeCategory);
+      onCategorySelect(typeCategory);
     }
-  }, [selectedType, items]);
+  }, [selectedType, items, onCategorySelect]);
 
   // Load image URLs for all items
   useEffect(() => {
@@ -169,7 +170,7 @@ export function WardrobeGallery({ items, allItems, selectedType, onTypeSelect, o
             return (
               <button
                 key={category}
-                onClick={() => setSelectedCategory(category)}
+                onClick={() => onCategorySelect(category)}
                 className="group relative bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 overflow-hidden border-2 border-gray-200 hover:border-indigo-400 transform hover:-translate-y-1 flex flex-col aspect-square"
               >
                 <div className="flex-1 relative bg-gradient-to-br from-gray-50 to-white overflow-hidden">
@@ -235,16 +236,13 @@ export function WardrobeGallery({ items, allItems, selectedType, onTypeSelect, o
       <div className="h-[calc(100vh-8rem)] min-h-[500px] flex flex-col space-y-4 px-4 sm:px-6 lg:px-8 pt-0 pb-6">
         {/* Back button */}
         <button
-          onClick={() => setSelectedCategory(null)}
+          onClick={() => onCategorySelect(null)}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-4 flex-shrink-0"
         >
           <span className="text-xl">←</span>
           <span className="font-medium">Back to Categories</span>
         </button>
 
-        <div className="flex-shrink-0">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">{selectedCategory}</h2>
-        </div>
         
         <div 
           className="flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 w-full max-w-5xl mx-auto gap-3 sm:gap-4"
@@ -315,7 +313,7 @@ export function WardrobeGallery({ items, allItems, selectedType, onTypeSelect, o
     // Ensure category is set before clearing the type
     // This will show the types view for that category
     if (selectedItemCategory) {
-      setSelectedCategory(selectedItemCategory);
+      onCategorySelect(selectedItemCategory);
     }
     // Clear the type selection - this will trigger the types view if category is set
     onTypeSelect(null);

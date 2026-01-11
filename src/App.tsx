@@ -21,7 +21,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { WardrobeProvider, useWardrobeContext } from './contexts/WardrobeContext';
 import { signup } from './services/auth';
 import { useWardrobe } from './hooks/useWardrobe';
-import { ClothingItem, ClothingColor } from './types/clothing';
+import { ClothingItem, ClothingColor, ClothingCategory } from './types/clothing';
 import { LoginCredentials, SignupCredentials } from './types/auth';
 import { getUserProfile, saveUserProfile, getClothingItems, updateClothingItem } from './services/firestore';
 import { UserProfile } from './types/profile';
@@ -50,6 +50,7 @@ function AppContent() {
   const [activePage, setActivePage] = useState<'wardrobe' | 'fitting-room' | 'profile'>('wardrobe');
   const [selectedItem, setSelectedItem] = useState<ClothingItem | null>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null); // Selected type category
+  const [selectedCategory, setSelectedCategory] = useState<ClothingCategory | null>(null); // Selected category
   const [filterBrand, setFilterBrand] = useState<string | 'All'>('All');
   const [filterColor, setFilterColor] = useState<string | 'All'>('All');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -166,6 +167,7 @@ function AppContent() {
     console.log('[App] handleWardrobeChange called with:', wardrobeId);
     // Reset filters when switching wardrobes
     setSelectedType(null);
+    setSelectedCategory(null);
     setFilterBrand('All');
     setFilterColor('All');
     // Force refresh items when wardrobe changes
@@ -220,7 +222,12 @@ function AppContent() {
               <div className="flex-1">
                 <WardrobeSelector onWardrobeChange={handleWardrobeChange} />
               </div>
-              {(selectedType !== null || filterBrand !== 'All' || filterColor !== 'All') && (
+              {selectedCategory && (
+                <div className="text-right">
+                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900">{selectedCategory}</h2>
+                </div>
+              )}
+              {!selectedCategory && (selectedType !== null || filterBrand !== 'All' || filterColor !== 'All') && (
                 <div className="text-right">
                   <p className="text-xs text-gray-500">
                     {selectedType !== null && <span>{selectedType}</span>}
@@ -287,7 +294,9 @@ function AppContent() {
             items={filteredItems}
             allItems={items}
             selectedType={selectedType}
+            selectedCategory={selectedCategory}
             onTypeSelect={setSelectedType}
+            onCategorySelect={setSelectedCategory}
             onEdit={handleEdit}
             onDelete={deleteItem}
             onView={(item) => setSelectedItem(item)}
