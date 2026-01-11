@@ -1,15 +1,27 @@
 import { useState, useRef } from 'react';
-import { Camera, Upload, X } from 'lucide-react';
+import { Upload, X, Edit2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ClothingAnalysis, analyzeClothingImage } from '@/services/imageAnalysis';
+import { ImageEditor } from './ImageEditor';
 
 interface PhotoCaptureProps {
   onPhotoCapture: (blob: Blob) => void;
   initialPreview?: string | null;
+  onAnalysisComplete?: (analysis: ClothingAnalysis) => void;
+  onAnalysisStart?: () => void;
 }
 
-export function PhotoCapture({ onPhotoCapture, initialPreview }: PhotoCaptureProps) {
+export function PhotoCapture({ onPhotoCapture, initialPreview, onAnalysisComplete, onAnalysisStart }: PhotoCaptureProps) {
   const [preview, setPreview] = useState<string | null>(initialPreview || null);
+  const [showEditor, setShowEditor] = useState(false);
+  const [tempImageUrl, setTempImageUrl] = useState<string | null>(null);
+  const [finalImageBlob, setFinalImageBlob] = useState<Blob | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  console.log('[PhotoCapture] Component rendered with callbacks:', {
+    hasOnAnalysisComplete: !!onAnalysisComplete,
+    hasOnAnalysisStart: !!onAnalysisStart,
+  });
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -21,12 +33,60 @@ export function PhotoCapture({ onPhotoCapture, initialPreview }: PhotoCapturePro
       return;
     }
 
-    // Create preview
+    // Create preview URL and open editor
     const previewUrl = URL.createObjectURL(file);
-    setPreview(previewUrl);
+    setTempImageUrl(previewUrl);
+    setShowEditor(true);
+  };
 
-    // Convert to blob and call callback
-    onPhotoCapture(file);
+  const handleEditorSave = async (croppedBlob: Blob) => {
+    // Create preview from cropped blob
+    const previewUrl = URL.createObjectURL(croppedBlob);
+    setPreview(previewUrl);
+    setFinalImageBlob(croppedBlob);
+
+    // Clean up temp image URL
+    if (tempImageUrl) {
+      URL.revokeObjectURL(tempImageUrl);
+      setTempImageUrl(null);
+    }
+
+    // Close editor
+    setShowEditor(false);
+
+    // Call callback with cropped blob
+    onPhotoCapture(croppedBlob);
+
+    // Trigger AI analysis if callbacks are provided
+    if (onAnalysisComplete) {
+      console.log('[PhotoCapture] Analysis callbacks provided, starting analysis...');
+      try {
+        onAnalysisStart?.();
+        console.log('[PhotoCapture] Analysis start callback called');
+        const analysis = await analyzeClothingImage(croppedBlob);
+        console.log('[PhotoCapture] Analysis completed, result:', analysis);
+        onAnalysisComplete(analysis);
+        console.log('[PhotoCapture] Analysis complete callback called');
+      } catch (error) {
+        console.error('[PhotoCapture] AI analysis failed:', error);
+        // Silently fail - don't block user from continuing
+      }
+    } else {
+      console.log('[PhotoCapture] No analysis callbacks provided, skipping analysis');
+    }
+  };
+
+  const handleEditorClose = () => {
+    setShowEditor(false);
+    // Clean up temp image URL if editor is closed without saving
+    if (tempImageUrl) {
+      URL.revokeObjectURL(tempImageUrl);
+      setTempImageUrl(null);
+    }
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleCameraClick = () => {
@@ -37,8 +97,21 @@ export function PhotoCapture({ onPhotoCapture, initialPreview }: PhotoCapturePro
 
   const handleClearPhoto = () => {
     setPreview(null);
+    setFinalImageBlob(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+    // Clean up preview URL
+    if (preview) {
+      URL.revokeObjectURL(preview);
+    }
+  };
+
+  const handleEditPhoto = () => {
+    if (finalImageBlob) {
+      const previewUrl = URL.createObjectURL(finalImageBlob);
+      setTempImageUrl(previewUrl);
+      setShowEditor(true);
     }
   };
 
@@ -62,15 +135,26 @@ export function PhotoCapture({ onPhotoCapture, initialPreview }: PhotoCapturePro
               alt="Clothing preview"
               className="w-full h-full object-cover"
             />
-            <Button
-              type="button"
-              variant="destructive"
-              size="icon"
-              className="absolute top-2 right-2"
-              onClick={handleClearPhoto}
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="absolute top-2 right-2 flex gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                onClick={handleEditPhoto}
+                title="Edit image"
+              >
+                <Edit2 className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                size="icon"
+                onClick={handleClearPhoto}
+                title="Remove image"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         ) : (
           <div
@@ -83,7 +167,7 @@ export function PhotoCapture({ onPhotoCapture, initialPreview }: PhotoCapturePro
                 Upload Photo
               </p>
               <p className="text-sm text-gray-500">
-                Click to browse files
+                Click to select or capture
               </p>
             </div>
           </div>
@@ -98,8 +182,18 @@ export function PhotoCapture({ onPhotoCapture, initialPreview }: PhotoCapturePro
           className="w-full"
         >
           <Upload className="h-4 w-4 mr-2" />
-          Choose Photo from Computer
+          Choose Photo
         </Button>
+      )}
+
+      {/* Image Editor Dialog */}
+      {tempImageUrl && (
+        <ImageEditor
+          imageUrl={tempImageUrl}
+          open={showEditor}
+          onClose={handleEditorClose}
+          onSave={handleEditorSave}
+        />
       )}
     </div>
   );

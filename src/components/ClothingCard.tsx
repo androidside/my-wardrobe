@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Trash2, Edit } from 'lucide-react';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ClothingItem } from '@/types/clothing';
 
@@ -9,15 +9,18 @@ interface ClothingCardProps {
   imageUrl: string | null;
   onEdit: (item: ClothingItem) => void;
   onDelete: (id: string) => void;
+  onView?: (item: ClothingItem) => void;
 }
 
-export function ClothingCard({ item, imageUrl, onEdit, onDelete }: ClothingCardProps) {
+export function ClothingCard({ item, imageUrl, onEdit, onDelete, onView }: ClothingCardProps) {
   const [showActions, setShowActions] = useState(false);
 
   return (
     <Card
       className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-      onClick={() => setShowActions(!showActions)}
+      onClick={() => onView ? onView(item) : setShowActions(!showActions)}
+      onMouseEnter={() => setShowActions(true)}
+      onMouseLeave={() => setShowActions(false)}
     >
       {/* Image */}
       <div className="aspect-square bg-gray-100 relative overflow-hidden">
@@ -66,23 +69,22 @@ export function ClothingCard({ item, imageUrl, onEdit, onDelete }: ClothingCardP
       </div>
 
       {/* Item Details */}
-      <CardContent className="p-4">
-        <h3 className="font-semibold text-lg mb-1 truncate">{item.brand}</h3>
-        <p className="text-sm text-gray-600 mb-2">{item.type}</p>
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-500">{item.size}</span>
-          <span className="text-gray-500">{item.color}</span>
+      <CardContent className="p-1.5 sm:p-2">
+        <h3 className="font-semibold text-[10px] sm:text-xs mb-0.5 truncate">{item.brand}</h3>
+        <p className="text-[10px] sm:text-xs text-gray-600 mb-0.5 truncate">{item.type}</p>
+        <div className="flex items-center justify-between text-[9px] sm:text-xs gap-1">
+          <span className="text-gray-500 truncate">{item.size}</span>
+          <div className="text-gray-500 truncate flex items-center gap-1">
+            <span>{item.color}</span>
+            {item.colors && item.colors.length > 0 && (
+              <span className="text-indigo-600" title={`Also: ${item.colors.join(', ')}`}>+{item.colors.length}</span>
+            )}
+            {item.pattern && item.pattern !== 'Solid' && (
+              <span className="text-purple-600" title={`Pattern: ${item.pattern}`}>●</span>
+            )}
+          </div>
         </div>
       </CardContent>
-
-      <CardFooter className="px-4 pb-4 pt-0">
-        <div className="w-full flex items-center justify-between">
-          <span className="font-semibold text-lg text-green-600">${item.cost.toFixed(2)}</span>
-          <span className="text-xs text-gray-400">
-            {new Date(item.dateAdded).toLocaleDateString()}
-          </span>
-        </div>
-      </CardFooter>
     </Card>
   );
 }

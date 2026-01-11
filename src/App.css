@@ -104,3 +104,8 @@
 		min-height: 100vh;
 	}
 }
+
+/* Mobile safe area support for devices with home indicators */
+.safe-area-bottom {
+	padding-bottom: env(safe-area-inset-bottom);
+}
