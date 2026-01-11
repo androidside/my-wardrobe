@@ -69,6 +69,18 @@ interface WardrobeGalleryProps {
 export function WardrobeGallery({ items, allItems, selectedType, onTypeSelect, onEdit, onDelete, onView }: WardrobeGalleryProps) {
   const [imageUrls, setImageUrls] = useState<Record<string, string | null>>({});
   const [selectedCategory, setSelectedCategory] = useState<ClothingCategory | null>(null);
+  
+  // When a type is selected, remember its category for navigation
+  // This ensures we can go back to the types view when clicking back from items view
+  useEffect(() => {
+    if (selectedType) {
+      // Find the category for the selected type
+      const typeCategory = items.find(i => i.type === selectedType)?.category || getCategoryForType(selectedType);
+      // Always set the category to match the selected type
+      // This ensures proper navigation when going back from items view
+      setSelectedCategory(typeCategory);
+    }
+  }, [selectedType, items]);
 
   // Load image URLs for all items
   useEffect(() => {
@@ -120,13 +132,6 @@ export function WardrobeGallery({ items, allItems, selectedType, onTypeSelect, o
       </div>
     );
   }
-
-  // Reset selectedCategory when selectedType changes externally
-  useEffect(() => {
-    if (selectedType === null) {
-      setSelectedCategory(null);
-    }
-  }, [selectedType]);
 
   // Show category view when no type is selected and no category is selected
   if (selectedType === null && selectedCategory === null) {
@@ -270,18 +275,26 @@ export function WardrobeGallery({ items, allItems, selectedType, onTypeSelect, o
   // Show items of selected type
   const selectedItemCategory = selectedType ? (items.find(i => i.type === selectedType)?.category || getCategoryForType(selectedType)) : null;
   
+  // Handle back navigation from items view to types view
+  const handleBackFromItems = () => {
+    // Ensure category is set before clearing the type
+    // This will show the types view for that category
+    if (selectedItemCategory) {
+      setSelectedCategory(selectedItemCategory);
+    }
+    // Clear the type selection - this will trigger the types view if category is set
+    onTypeSelect(null);
+  };
+  
   return (
     <div className="space-y-4">
-      {/* Back button */}
+      {/* Back button - goes back to types view within the category */}
       <button
-        onClick={() => {
-          setSelectedCategory(selectedItemCategory);
-          onTypeSelect(null);
-        }}
+        onClick={handleBackFromItems}
         className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-4"
       >
         <span className="text-xl">←</span>
-        <span className="font-medium">Back to {selectedItemCategory || 'Categories'}</span>
+        <span className="font-medium">Back to Types</span>
       </button>
 
       {/* Items grid */}

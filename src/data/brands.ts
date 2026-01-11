@@ -212,6 +212,7 @@ export const BRAND_LIST: readonly string[] = [
   'Calvin Klein',
   'Tommy Hilfiger',
   'Ralph Lauren',
+  'Gant',
   'Lacoste',
   'Gucci',
   'Prada',

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { LogOut, Lock, Mail } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { LogOut, Lock, Mail, Upload, X, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,6 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { updateUserPassword } from '@/services/auth';
 import { SHOE_SIZES, REGULAR_SIZES } from '@/types/clothing';
 import { COUNTRIES } from '@/data/countries';
+import { uploadProfilePicture } from '@/services/storage';
 
 export function MyProfile() {
   const { user, logout } = useAuth();
@@ -31,10 +32,15 @@ export function MyProfile() {
     pantsSizeUs: '',
     heightCm: undefined,
     weightKg: undefined,
-    headSizeCm: undefined,
+    headSize: undefined,
     generalSize: undefined,
+    profilePictureUrl: undefined,
     notes: '',
   });
+  
+  const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(null);
+  const [uploadingPicture, setUploadingPicture] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -64,6 +70,10 @@ export function MyProfile() {
         const userProfile = await getUserProfile(user.uid);
         if (userProfile) {
           setProfile(userProfile);
+          // Set profile picture preview if URL exists
+          if (userProfile.profilePictureUrl) {
+            setProfilePicturePreview(userProfile.profilePictureUrl);
+          }
         }
         setLoading(false);
       } catch (err) {
@@ -112,10 +122,126 @@ export function MyProfile() {
       pantsSizeUs: '',
       heightCm: undefined,
       weightKg: undefined,
-      headSizeCm: undefined,
+      headSize: undefined,
       generalSize: undefined,
+      profilePictureUrl: undefined,
       notes: '',
     });
+    setProfilePicturePreview(null);
+  };
+
+  const handleProfilePictureChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image size must be less than 5MB');
+      return;
+    }
+
+    try {
+      setUploadingPicture(true);
+      
+      if (!user) {
+        alert('No user logged in');
+        return;
+      }
+
+      // Create temporary preview for immediate feedback
+      const previewUrl = URL.createObjectURL(file);
+      setProfilePicturePreview(previewUrl);
+
+      // Upload to Firebase Storage
+      const fileToUpload = new File([file], `profile_${Date.now()}.jpg`, {
+        type: file.type || 'image/jpeg',
+      });
+      
+      console.log('[MyProfile] Uploading profile picture for user:', user.uid);
+      console.log('[MyProfile] Storage path will be: users/', user.uid, '/profile/');
+      
+      const imageUrl = await uploadProfilePicture(user.uid, fileToUpload);
+      console.log('[MyProfile] Profile picture uploaded successfully, URL:', imageUrl);
+      
+      // Update profile with new picture URL
+      const updatedProfile = { ...profile, profilePictureUrl: imageUrl };
+      setProfile(updatedProfile);
+      
+      // Save to Firestore immediately to persist the URL
+      try {
+        await saveUserProfile(user.uid, updatedProfile);
+        console.log('[MyProfile] Profile saved with picture URL to Firestore');
+      } catch (saveError) {
+        console.error('[MyProfile] Failed to save profile with picture URL:', saveError);
+        // Profile upload succeeded but save failed - still update local state
+        // User can manually save later
+      }
+      
+      // Update preview to use the uploaded URL (Firebase URL is permanent)
+      setProfilePicturePreview(imageUrl);
+      
+      // Clean up temporary preview URL
+      URL.revokeObjectURL(previewUrl);
+    } catch (error) {
+      console.error('[MyProfile] Error uploading profile picture:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[MyProfile] Upload error details:', {
+        code: (error as any)?.code,
+        message: errorMessage,
+        serverResponse: (error as any)?.serverResponse,
+        storagePath: user ? `users/${user.uid}/profile/` : 'unknown',
+      });
+      
+      // Clean up temporary preview URL on error
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+      
+      // Provide more specific error messages
+      let userMessage = 'Failed to upload profile picture. Please try again.';
+      if (errorMessage.includes('permission') || errorMessage.includes('unauthorized') || (error as any)?.code === 'storage/unauthorized') {
+        userMessage = 'Permission denied. Please check Firebase Storage security rules. See FIREBASE_STORAGE_RULES.md for setup instructions.';
+      } else if (errorMessage.includes('bucket') || errorMessage.includes('Storage bucket') || (error as any)?.code === 'storage/no-default-bucket') {
+        userMessage = 'Storage bucket not configured. Please check your Firebase configuration and VITE_FIREBASE_STORAGE_BUCKET in .env file.';
+      } else if (errorMessage.includes('not initialized')) {
+        userMessage = 'Firebase Storage not initialized. Please check your Firebase configuration.';
+      }
+      
+      alert(userMessage);
+      
+      // Revert preview to previous picture (if any)
+      setProfilePicturePreview(profile.profilePictureUrl || null);
+    } finally {
+      setUploadingPicture(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemoveProfilePicture = async () => {
+    if (!user) return;
+    
+    setProfilePicturePreview(null);
+    const updatedProfile = { ...profile, profilePictureUrl: undefined };
+    setProfile(updatedProfile);
+    
+    // Save to Firestore immediately to persist the removal
+    try {
+      await saveUserProfile(user.uid, updatedProfile);
+      console.log('[MyProfile] Profile picture removed from profile');
+    } catch (error) {
+      console.error('Error removing profile picture from profile:', error);
+      // Revert on error
+      setProfilePicturePreview(profile.profilePictureUrl || null);
+    }
   };
 
   const handleLogout = async () => {
@@ -197,6 +323,56 @@ export function MyProfile() {
         )}
 
         <div className="space-y-5">
+          {/* Profile Picture */}
+          <div>
+            <Label className="text-sm font-medium text-gray-700 block mb-2">Profile Picture</Label>
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                {profilePicturePreview ? (
+                  <div className="relative">
+                    <img
+                      src={profilePicturePreview}
+                      alt="Profile"
+                      className="w-24 h-24 rounded-full object-cover border-2 border-gray-300"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleRemoveProfilePicture}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                      title="Remove picture"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-24 h-24 rounded-full bg-gray-200 border-2 border-gray-300 flex items-center justify-center">
+                    <Camera className="h-8 w-8 text-gray-400" />
+                  </div>
+                )}
+              </div>
+              <div className="flex-1">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleProfilePictureChange}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingPicture}
+                  className="w-full sm:w-auto"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  {uploadingPicture ? 'Uploading...' : profilePicturePreview ? 'Change Picture' : 'Upload Picture'}
+                </Button>
+                <p className="text-xs text-gray-500 mt-1">JPG, PNG or GIF. Max 5MB</p>
+              </div>
+            </div>
+          </div>
+
           {/* Email Display (Read-only) */}
           <div>
             <Label className="text-sm font-medium text-gray-700 block mb-1">Email Address</Label>
@@ -351,15 +527,20 @@ export function MyProfile() {
           </div>
 
           <div>
-            <Label htmlFor="headSize" className="text-sm font-medium text-gray-700 block mb-1">Head Size (cm)</Label>
-            <Input
-              id="headSize"
-              type="number"
-              placeholder="e.g., 58"
-              value={profile.headSizeCm || ''}
-              onChange={(e) => setProfile({ ...profile, headSizeCm: e.target.value ? parseInt(e.target.value) : undefined })}
-              className="mt-1"
-            />
+            <Label htmlFor="headSize" className="text-sm font-medium text-gray-700 block mb-1">Head Size</Label>
+            <Select 
+              value={profile.headSize || ''} 
+              onValueChange={(value) => setProfile({ ...profile, headSize: (value || undefined) as 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'Other' | undefined })}
+            >
+              <SelectTrigger id="headSize" className="mt-1">
+                <SelectValue placeholder="Select head size" />
+              </SelectTrigger>
+              <SelectContent>
+                {REGULAR_SIZES.map((size) => (
+                  <SelectItem key={size} value={size}>{size}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div>

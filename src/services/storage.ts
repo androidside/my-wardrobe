@@ -75,6 +75,32 @@ export const deleteImage = async (filePath: string): Promise<void> => {
   }
 };
 
+export const uploadProfilePicture = async (userId: string, file: File): Promise<string> => {
+  try {
+    if (!storage) {
+      throw new Error('Firebase Storage is not initialized. Check your Firebase configuration.');
+    }
+
+    const timestamp = Date.now();
+    const fileName = `profile_${timestamp}_${file.name}`;
+    const storagePath = `users/${userId}/profile/${fileName}`;
+    const storageRef = ref(storage, storagePath);
+
+    console.log('Uploading profile picture to Firebase Storage:', { storagePath, fileSize: file.size, fileType: file.type });
+
+    const snapshot = await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(snapshot.ref);
+
+    console.log('Profile picture uploaded successfully:', downloadURL);
+    return downloadURL;
+  } catch (error) {
+    console.error('Error uploading profile picture:', error);
+    const storageError = error as StorageError;
+    const errorMessage = getStorageErrorMessage(storageError);
+    throw new Error(errorMessage);
+  }
+};
+
 export const deleteItemImages = async (): Promise<void> => {
   // Note: Firestore doesn't support deleting directories directly
   // Images will need to be tracked in Firestore and deleted individually

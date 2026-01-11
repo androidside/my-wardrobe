@@ -1,5 +1,5 @@
 import { BRAND_LIST } from '@/data/brands';
-import { ClothingCategory, getCategoryForType, CLOTHING_TYPES_BY_CATEGORY, ClothingPattern } from '@/types/clothing';
+import { ClothingCategory, getCategoryForType, ClothingPattern } from '@/types/clothing';
 
 export interface BrandOption {
   brand: string;
@@ -324,8 +324,75 @@ function levenshteinDistance(str1: string, str2: string): number {
 }
 
 /**
+ * Extract potential brand names from text using heuristics
+ * Looks for capitalized words, common brand patterns, etc.
+ */
+function extractPotentialBrandsFromText(text: string): string[] {
+  const potentialBrands: string[] = [];
+  
+  // Split text into words and phrases
+  // Remove common non-brand words (articles, prepositions, etc.)
+  const commonWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can', 'this', 'that', 'these', 'those', 'it', 'its', 'made', 'size', 'cm', 'eu', 'us', 'uk', 'xl', 'xxl', 's', 'm', 'l']);
+  
+  // Extract capitalized words/phrases (likely brand names)
+  const lines = text.split(/\n/);
+  for (const line of lines) {
+    // Look for words that start with capital letters
+    const capitalizedWords = line.match(/\b[A-Z][a-zA-Z]*(?:\s+[A-Z][a-zA-Z]*)*\b/g);
+    if (capitalizedWords) {
+      for (const word of capitalizedWords) {
+        const cleanWord = word.trim().replace(/[^\w\s]/g, '');
+        if (cleanWord.length >= 2 && cleanWord.length <= 30 && !commonWords.has(cleanWord.toLowerCase())) {
+          potentialBrands.push(cleanWord);
+        }
+      }
+    }
+  }
+  
+  // Also extract all words longer than 3 characters (excluding common words)
+  const words = text.split(/\s+/).filter((w: string) => {
+    const clean = w.replace(/[^\w]/g, '').toLowerCase();
+    return clean.length >= 3 && clean.length <= 25 && !commonWords.has(clean);
+  });
+  potentialBrands.push(...words);
+  
+  // Remove duplicates and return
+  return Array.from(new Set(potentialBrands.map(b => b.trim()))).filter(b => b.length > 0);
+}
+
+/**
+ * Check if text contains brand name with word boundaries (better matching)
+ */
+function containsBrandName(text: string, brand: string): boolean {
+  const lowerText = text.toLowerCase();
+  const lowerBrand = brand.toLowerCase();
+  
+  // Exact match with word boundaries
+  const wordBoundaryRegex = new RegExp(`\\b${lowerBrand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
+  if (wordBoundaryRegex.test(lowerText)) {
+    return true;
+  }
+  
+  // Contains match (fallback for multi-word brands)
+  if (lowerText.includes(lowerBrand)) {
+    return true;
+  }
+  
+  // Check if brand is part of a larger word (but not vice versa)
+  const brandWords = lowerBrand.split(/\s+/);
+  if (brandWords.length === 1) {
+    // Single word brand - check for standalone occurrence
+    const standaloneRegex = new RegExp(`(^|[^a-z])${lowerBrand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z]|$)`);
+    return standaloneRegex.test(lowerText);
+  }
+  
+  return false;
+}
+
+/**
  * Extract brand options from logo detection, text detection, labels, and fuzzy matching
  * Logo detection has highest priority as it's the most accurate
+ * Text detection is now enhanced to better extract brand names from detected text
  * Returns array of brand options sorted by score (highest first)
  */
 function extractBrandOptions(
@@ -336,8 +403,9 @@ function extractBrandOptions(
   const brandList = BRAND_LIST;
 
   const results: Array<{ brand: string; score: number; source: string }> = [];
+  const foundBrands = new Set<string>(); // Track brands we've found to avoid duplicates
 
-  // Method 0: Check logo detection (highest priority - most accurate)
+  // Method 0: Check logo detection (highest priority - most accurate, score: 0.9-1.0)
   if (logoAnnotations && logoAnnotations.length > 0) {
     console.log('[BrandDetection] Checking logo annotations:', logoAnnotations);
     for (const logo of logoAnnotations) {
@@ -356,23 +424,25 @@ function extractBrandOptions(
             lowerLogoDescription.includes(lowerBrand) ||
             lowerBrand.includes(lowerLogoDescription)) {
           // Use API's confidence score, but ensure minimum threshold
-          const finalScore = Math.max(logoScore, 0.8);
+          const finalScore = Math.max(logoScore, 0.9);
           results.push({ 
             brand, 
             score: finalScore,
             source: 'logo-detection' 
           });
+          foundBrands.add(brand);
           console.log('[BrandDetection] Logo matched to brand:', brand, 'with score:', finalScore);
         } else {
           // Fuzzy match for logo descriptions
           const similarity = stringSimilarity(lowerLogoDescription, lowerBrand);
-          if (similarity > 0.8) {
-            const finalScore = Math.max(logoScore * similarity, 0.75);
+          if (similarity > 0.75) {
+            const finalScore = Math.max(logoScore * similarity, 0.8);
             results.push({ 
               brand, 
               score: finalScore,
               source: 'logo-detection-fuzzy' 
             });
+            foundBrands.add(brand);
             console.log('[BrandDetection] Logo fuzzy matched to brand:', brand, 'with score:', finalScore);
           }
         }
@@ -380,35 +450,107 @@ function extractBrandOptions(
     }
   }
 
-  // Method 1: Check text annotations (exact and fuzzy match)
+  // Method 1: Enhanced text annotations analysis (high priority, score: 0.85-1.0)
   if (textAnnotations && textAnnotations.length > 0) {
-    const fullText = textAnnotations[0].description || '';
-    const lowerText = fullText.toLowerCase();
-    const words = fullText.split(/\s+/).filter((w: string) => w.length > 2);
-
-    for (const brand of brandList) {
-      const lowerBrand = brand.toLowerCase();
-      
-      // Exact substring match
-      if (lowerText.includes(lowerBrand)) {
-        results.push({ brand, score: 1.0, source: 'text-exact' });
-      }
-      
-      // Fuzzy match on individual words
-      for (const word of words) {
-        const similarity = stringSimilarity(word, brand);
-        if (similarity > 0.75) {
-          results.push({ brand, score: similarity, source: 'text-fuzzy' });
-        }
+    console.log('[BrandDetection] Analyzing text annotations:', textAnnotations.length, 'blocks');
+    
+    // Process ALL text annotations, not just the first one
+    let allText = '';
+    const textBlocks: string[] = [];
+    
+    for (const annotation of textAnnotations) {
+      const text = annotation.description || '';
+      if (text) {
+        allText += text + '\n';
+        textBlocks.push(text);
       }
     }
+    
+    console.log('[BrandDetection] Full detected text:', allText);
+    
+    // Extract potential brand names from text using heuristics
+    const potentialBrands = extractPotentialBrandsFromText(allText);
+    console.log('[BrandDetection] Extracted potential brands from text:', potentialBrands.slice(0, 10));
+    
+    // Check each brand in our list against the detected text
+      for (const brand of brandList) {
+        if (foundBrands.has(brand)) continue; // Skip if already found via logo
+        
+        const lowerBrand = brand.toLowerCase();
+      
+        // Exact match with word boundaries (highest confidence for text)
+        if (containsBrandName(allText, brand)) {
+          results.push({ brand, score: 1.0, source: 'text-exact' });
+          foundBrands.add(brand);
+          console.log('[BrandDetection] Text exact match found:', brand);
+          continue;
+        }
+        
+        // Check against potential brands extracted from text
+        let matchedViaPotential = false;
+        for (const potential of potentialBrands) {
+          const lowerPotential = potential.toLowerCase();
+          
+          // Exact match with potential brand
+          if (lowerPotential === lowerBrand) {
+            results.push({ brand, score: 0.95, source: 'text-extracted' });
+            foundBrands.add(brand);
+            matchedViaPotential = true;
+            console.log('[BrandDetection] Potential brand matched:', brand);
+            break;
+          }
+          
+          // Check if potential brand contains brand name or vice versa
+          if (lowerPotential.includes(lowerBrand) || lowerBrand.includes(lowerPotential)) {
+            const similarity = stringSimilarity(lowerPotential, lowerBrand);
+            if (similarity > 0.7) {
+              results.push({ brand, score: 0.85 + (similarity * 0.1), source: 'text-extracted-fuzzy' });
+              foundBrands.add(brand);
+              matchedViaPotential = true;
+              console.log('[BrandDetection] Potential brand fuzzy matched:', brand, 'similarity:', similarity);
+              break;
+            }
+          }
+        }
+        
+        // Fuzzy match on individual words if not matched yet (lower confidence)
+        if (!matchedViaPotential) {
+          // Check individual words from potential brands
+          for (const potential of potentialBrands) {
+            if (potential.length >= 3 && !matchedViaPotential) {
+              const similarity = stringSimilarity(potential.toLowerCase(), lowerBrand);
+              if (similarity > 0.7 && similarity < 1.0) { // Similar but not exact
+                results.push({ brand, score: 0.7 + (similarity * 0.15), source: 'text-word-fuzzy' });
+                foundBrands.add(brand);
+                matchedViaPotential = true;
+                console.log('[BrandDetection] Word fuzzy match:', brand, 'from', potential, 'similarity:', similarity);
+                break;
+              }
+            }
+          }
+        }
+        
+        // Last resort: check similarity against full text (for partial matches)
+        if (!matchedViaPotential) {
+          // Extract first few words that might be brand name (usually brand appears early in text)
+          const firstWords = allText.split(/\s+/).slice(0, 5).join(' ').toLowerCase();
+          const fullTextSimilarity = stringSimilarity(firstWords, brand);
+          if (fullTextSimilarity > 0.65) {
+            results.push({ brand, score: 0.7 + (fullTextSimilarity * 0.15), source: 'text-fuzzy' });
+            foundBrands.add(brand);
+            console.log('[BrandDetection] Text fuzzy match:', brand, 'similarity:', fullTextSimilarity);
+          }
+        }
+      }
   }
 
-  // Method 2: Check labels for brand-related terms
+  // Method 2: Check labels for brand-related terms (medium priority, score: 0.8-0.9)
   if (labels && labels.length > 0) {
     const lowerLabels = labels.map(l => l.toLowerCase());
     
     for (const brand of brandList) {
+      if (foundBrands.has(brand)) continue; // Skip if already found
+      
       const lowerBrand = brand.toLowerCase();
       const brandWords = lowerBrand.split(/\s+/);
       
@@ -416,6 +558,9 @@ function extractBrandOptions(
       for (const label of lowerLabels) {
         if (label.includes(lowerBrand)) {
           results.push({ brand, score: 0.9, source: 'label-exact' });
+          foundBrands.add(brand);
+          console.log('[BrandDetection] Label exact match:', brand);
+          break;
         }
         
         // Check for individual brand words (for multi-word brands)
@@ -423,7 +568,10 @@ function extractBrandOptions(
           if (brandWord.length > 3 && label.includes(brandWord)) {
             const similarity = stringSimilarity(label, brand);
             if (similarity > 0.7) {
-              results.push({ brand, score: similarity * 0.8, source: 'label-fuzzy' });
+              results.push({ brand, score: similarity * 0.85, source: 'label-fuzzy' });
+              foundBrands.add(brand);
+              console.log('[BrandDetection] Label fuzzy match:', brand, 'similarity:', similarity);
+              break;
             }
           }
         }
@@ -441,11 +589,30 @@ function extractBrandOptions(
   }
 
   // Sort by score (highest first) and filter by minimum threshold
+  // Lowered threshold to 0.65 to catch more potential matches
   const sortedResults = Array.from(uniqueResults.values())
-    .filter(r => r.score >= 0.7)
-    .sort((a, b) => b.score - a.score);
+    .filter(r => r.score >= 0.65)
+    .sort((a, b) => {
+      // First sort by score
+      if (Math.abs(a.score - b.score) > 0.05) {
+        return b.score - a.score;
+      }
+      // If scores are close, prioritize certain sources
+      const sourcePriority: Record<string, number> = {
+        'logo-detection': 4,
+        'logo-detection-fuzzy': 3,
+        'text-exact': 4,
+        'text-extracted': 3,
+        'text-extracted-fuzzy': 2,
+        'text-fuzzy': 2,
+        'text-word-fuzzy': 1,
+        'label-exact': 2,
+        'label-fuzzy': 1,
+      };
+      return (sourcePriority[b.source] || 0) - (sourcePriority[a.source] || 0);
+    });
 
-  console.log('[BrandDetection] Found brand options:', sortedResults.slice(0, 5));
+  console.log('[BrandDetection] Final brand options:', sortedResults.slice(0, 10));
   
   return sortedResults;
 }
