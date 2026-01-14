@@ -8,6 +8,7 @@ export interface SignupCredentials {
   password: string;
   confirmPassword: string;
   profile: {
+    username: string;
     firstName: string;
     lastName: string;
     dateOfBirth: string;
@@ -26,6 +27,7 @@ export interface ValidationErrors {
   email?: string;
   password?: string;
   confirmPassword?: string;
+  username?: string;
   firstName?: string;
   lastName?: string;
   dateOfBirth?: string;

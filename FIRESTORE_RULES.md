@@ -15,7 +15,12 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /users/{userId} {
+      // Users can read/write their own document
       allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow authenticated users to query usernames for availability checks
+      // This is needed for username uniqueness validation
+      allow list: if request.auth != null;
       
       match /wardrobe/{itemId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;

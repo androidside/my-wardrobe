@@ -75,13 +75,14 @@ function AppContent() {
       if (authUser && credentials.profile) {
         try {
           await saveUserProfile(authUser.uid, {
+            username: credentials.profile.username,
             firstName: credentials.profile.firstName,
             lastName: credentials.profile.lastName,
             dateOfBirth: credentials.profile.dateOfBirth,
             gender: credentials.profile.gender,
             city: credentials.profile.city,
             country: credentials.profile.country,
-          });
+          }, true); // Skip username check since we already validated it
           console.log('Profile saved successfully during signup');
         } catch (profileError) {
           console.error('Error saving profile during signup:', profileError);

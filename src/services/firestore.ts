@@ -22,12 +22,15 @@ import { Wardrobe, WardrobeInput } from '../types/wardrobe';
   service cloud.firestore {
     match /databases/{database}/documents {
       match /users/{userId} {
-        allow read, write: if request.auth.uid == userId;
+        // Users can read/write their own document
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+        // Allow authenticated users to query usernames for availability checks
+        allow list: if request.auth != null;
         match /wardrobe/{itemId} {
-          allow read, write: if request.auth.uid == userId;
+          allow read, write: if request.auth != null && request.auth.uid == userId;
         }
         match /wardrobes/{wardrobeId} {
-          allow read, write: if request.auth.uid == userId;
+          allow read, write: if request.auth != null && request.auth.uid == userId;
         }
       }
     }
@@ -51,14 +54,83 @@ const getFirestoreErrorMessage = (error: FirestoreError): string => {
   }
 };
 
-export const saveUserProfile = async (userId: string, profile: UserProfile): Promise<void> => {
+// Username validation: alphanumeric + underscore, 3-20 characters
+export const validateUsername = (username: string): boolean => {
+  const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+  return usernameRegex.test(username);
+};
+
+// Check if username is available (not taken by another user)
+export const checkUsernameAvailability = async (username: string, excludeUserId?: string): Promise<boolean> => {
+  try {
+    if (!username || !validateUsername(username)) {
+      return false;
+    }
+
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where('username', '==', username));
+    const querySnapshot = await getDocs(q);
+
+    // Check if username is taken by another user
+    const isTaken = querySnapshot.docs.some((doc) => doc.id !== excludeUserId);
+    return !isTaken;
+  } catch (error) {
+    console.error('Error checking username availability:', error);
+    // On error, assume unavailable to be safe
+    return false;
+  }
+};
+
+// Generate username from firstName and lastName
+export const generateUsernameFromName = (firstName: string, lastName: string): string => {
+  const first = (firstName || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  const last = (lastName || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  
+  if (!first && !last) {
+    return '';
+  }
+  
+  // Combine first and last name
+  const baseUsername = last ? `${first}${last}` : first;
+  
+  // Ensure minimum length
+  if (baseUsername.length < 3) {
+    return baseUsername.padEnd(3, '0');
+  }
+  
+  // Ensure maximum length
+  return baseUsername.substring(0, 20);
+};
+
+export const saveUserProfile = async (userId: string, profile: UserProfile, skipUsernameCheck = false): Promise<void> => {
   try {
     console.log('Saving profile for user:', userId);
+    
+    // Validate username if provided
+    if (profile.username !== undefined && profile.username !== null && profile.username.trim() !== '') {
+      const username = profile.username.trim();
+      
+      if (!validateUsername(username)) {
+        throw new Error('Username must be 3-20 characters and contain only letters, numbers, and underscores.');
+      }
+      
+      // Check username availability (unless we're skipping the check)
+      if (!skipUsernameCheck) {
+        const isAvailable = await checkUsernameAvailability(username, userId);
+        if (!isAvailable) {
+          throw new Error('This username is already taken. Please choose another one.');
+        }
+      }
+    }
+    
     const userRef = doc(db, 'users', userId);
     await setDoc(userRef, profile, { merge: true });
     console.log('Profile saved successfully');
   } catch (error) {
     console.error('Error saving profile:', error);
+    if (error instanceof Error) {
+      throw error;
+    }
     const firestoreError = error as FirestoreError;
     throw new Error(getFirestoreErrorMessage(firestoreError));
   }

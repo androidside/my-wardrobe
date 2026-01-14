@@ -12,7 +12,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { UserProfile } from '@/types/profile';
-import { getUserProfile, saveUserProfile } from '@/services/firestore';
+import { getUserProfile, saveUserProfile, validateUsername, checkUsernameAvailability } from '@/services/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 import { updateUserPassword } from '@/services/auth';
 import { SHOE_SIZES, REGULAR_SIZES } from '@/types/clothing';
@@ -31,6 +31,7 @@ export function MyProfile() {
     getItemCount,
   } = useWardrobeContext();
   const [profile, setProfile] = useState<UserProfile>({
+    username: '',
     firstName: '',
     lastName: '',
     dateOfBirth: '',
@@ -61,6 +62,8 @@ export function MyProfile() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [updatingPassword, setUpdatingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [checkingUsername, setCheckingUsername] = useState(false);
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   
   // Wardrobe management state
   const [itemCounts, setItemCounts] = useState<Record<string, number>>({});
@@ -142,6 +145,7 @@ export function MyProfile() {
 
   const handleClearProfile = () => {
     setProfile({
+      username: '',
       firstName: '',
       lastName: '',
       dateOfBirth: '',
@@ -417,6 +421,49 @@ export function MyProfile() {
           </div>
 
           {/* First Name and Last Name */}
+          {/* Username */}
+          <div>
+            <Label htmlFor="username" className="text-sm font-medium text-gray-700 block mb-1">Username</Label>
+            <Input
+              id="username"
+              type="text"
+              placeholder="johndoe123"
+              value={profile.username || ''}
+              onChange={(e) => {
+                const newUsername = e.target.value;
+                setProfile({ ...profile, username: newUsername });
+                setUsernameAvailable(null);
+              }}
+              onBlur={async () => {
+                const currentUsername = profile.username?.trim() || '';
+                if (currentUsername && validateUsername(currentUsername)) {
+                  setCheckingUsername(true);
+                  try {
+                    const available = await checkUsernameAvailability(currentUsername, user?.uid);
+                    setUsernameAvailable(available);
+                    if (!available && currentUsername !== profile.username) {
+                      setError('This username is already taken');
+                    }
+                  } catch (error) {
+                    console.error('Error checking username:', error);
+                  } finally {
+                    setCheckingUsername(false);
+                  }
+                }
+              }}
+              className={usernameAvailable === true ? 'border-green-500' : ''}
+            />
+            {checkingUsername && (
+              <p className="text-gray-500 text-xs mt-1">Checking availability...</p>
+            )}
+            {!checkingUsername && usernameAvailable === true && (
+              <p className="text-green-500 text-xs mt-1">Username available</p>
+            )}
+            {profile.username && !validateUsername(profile.username) && (
+              <p className="text-red-500 text-xs mt-1">3-20 characters, letters, numbers, and underscores only</p>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="firstName" className="text-sm font-medium text-gray-700 block mb-1">First Name</Label>

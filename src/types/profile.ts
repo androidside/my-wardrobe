@@ -4,6 +4,7 @@ export type Gender = 'Male' | 'Female' | 'Other';
 
 export interface UserProfile {
   // Personal Information
+  username?: string; // Unique username for social features
   firstName?: string;
   lastName?: string;
   dateOfBirth?: string; // ISO date string (YYYY-MM-DD)

@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import { COUNTRIES } from '@/data/countries';
+import { validateUsername, checkUsernameAvailability } from '@/services/firestore';
 
 interface SignupPageProps {
   onSwitchToLogin: () => void;
@@ -17,6 +18,7 @@ export function SignupPage({ onSwitchToLogin, onSignup }: SignupPageProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [username, setUsername] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
@@ -25,6 +27,8 @@ export function SignupPage({ onSwitchToLogin, onSignup }: SignupPageProps) {
   const [country, setCountry] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<ValidationErrors>({});
+  const [checkingUsername, setCheckingUsername] = useState(false);
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
 
   const validateForm = (): boolean => {
     const newErrors: ValidationErrors = {};
@@ -51,6 +55,15 @@ export function SignupPage({ onSwitchToLogin, onSignup }: SignupPageProps) {
       newErrors.confirmPassword = 'Please confirm your password';
     } else if (password !== confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
+    }
+
+    // Username validation
+    if (!username.trim()) {
+      newErrors.username = 'Username is required';
+    } else if (!validateUsername(username.trim())) {
+      newErrors.username = 'Username must be 3-20 characters and contain only letters, numbers, and underscores';
+    } else if (usernameAvailable === false) {
+      newErrors.username = 'This username is already taken';
     }
 
     // Personal information validation
@@ -107,6 +120,7 @@ export function SignupPage({ onSwitchToLogin, onSignup }: SignupPageProps) {
         password, 
         confirmPassword,
         profile: {
+          username: username.trim(),
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           dateOfBirth,
@@ -120,6 +134,7 @@ export function SignupPage({ onSwitchToLogin, onSignup }: SignupPageProps) {
       setEmail('');
       setPassword('');
       setConfirmPassword('');
+      setUsername('');
       setFirstName('');
       setLastName('');
       setDateOfBirth('');
@@ -127,6 +142,7 @@ export function SignupPage({ onSwitchToLogin, onSignup }: SignupPageProps) {
       setCity('');
       setCountry('');
       setErrors({});
+      setUsernameAvailable(null);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Signup failed. Please try again.';
       setErrors({ email: errorMessage });
@@ -154,7 +170,56 @@ export function SignupPage({ onSwitchToLogin, onSignup }: SignupPageProps) {
             <div className="border-b border-gray-200 pb-4 mb-4">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h3>
               
-              <div className="grid grid-cols-2 gap-4">
+              {/* Username */}
+              <div>
+                <Label htmlFor="username" className="text-sm font-medium text-gray-700 block mb-2">
+                  Username *
+                </Label>
+                <Input
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => {
+                    const newUsername = e.target.value;
+                    setUsername(newUsername);
+                    setUsernameAvailable(null);
+                    if (errors.username) setErrors({ ...errors, username: undefined });
+                  }}
+                  onBlur={async () => {
+                    if (username.trim() && validateUsername(username.trim())) {
+                      setCheckingUsername(true);
+                      try {
+                        const available = await checkUsernameAvailability(username.trim());
+                        setUsernameAvailable(available);
+                        if (!available) {
+                          setErrors({ ...errors, username: 'This username is already taken' });
+                        }
+                      } catch (error) {
+                        console.error('Error checking username:', error);
+                      } finally {
+                        setCheckingUsername(false);
+                      }
+                    }
+                  }}
+                  placeholder="johndoe123"
+                  className={`w-full ${errors.username ? 'border-red-500' : usernameAvailable === true ? 'border-green-500' : ''}`}
+                  disabled={isLoading}
+                />
+                {checkingUsername && (
+                  <p className="text-gray-500 text-sm mt-1">Checking availability...</p>
+                )}
+                {!checkingUsername && usernameAvailable === true && !errors.username && (
+                  <p className="text-green-500 text-sm mt-1">Username available</p>
+                )}
+                {errors.username && (
+                  <p className="text-red-500 text-sm mt-1">{errors.username}</p>
+                )}
+                {username.trim() && !errors.username && !checkingUsername && usernameAvailable === null && (
+                  <p className="text-gray-500 text-sm mt-1">3-20 characters, letters, numbers, and underscores only</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mt-4">
                 {/* First Name */}
                 <div>
                   <Label htmlFor="firstName" className="text-sm font-medium text-gray-700 block mb-2">
