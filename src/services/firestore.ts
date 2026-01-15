@@ -15,6 +15,7 @@ import { db } from '../config/firebase';
 import { UserProfile } from '../types/profile';
 import { ClothingItem } from '../types/clothing';
 import { Wardrobe, WardrobeInput } from '../types/wardrobe';
+import { UserSearchResult } from '../types/social';
 
 /*
   Firestore Security Rules:
@@ -155,6 +156,33 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
   }
 };
 
+export const getPublicUserProfile = async (userId: string): Promise<UserSearchResult | null> => {
+  try {
+    const userRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userRef);
+
+    if (!userDoc.exists()) {
+      return null;
+    }
+
+    const profile = userDoc.data() as UserProfile;
+    
+    // Return only public fields for search results
+    return {
+      userId,
+      username: profile.username || '',
+      profilePictureUrl: profile.profilePictureUrl,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      allowDirectFollow: profile.privacySettings?.allowDirectFollow ?? false,
+    };
+  } catch (error) {
+    console.error('Error getting public profile:', error);
+    const firestoreError = error as FirestoreError;
+    throw new Error(getFirestoreErrorMessage(firestoreError));
+  }
+};
+
 export const saveClothingItem = async (userId: string, item: Omit<ClothingItem, 'id'>): Promise<string> => {
   try {
     if (!db) {
@@ -249,6 +277,8 @@ export const createWardrobe = async (userId: string, input: WardrobeInput): Prom
     const now = new Date().toISOString();
     const wardrobeData = {
       name: input.name.trim(),
+      userId, // Store owner's user ID
+      isShareable: false, // Default to private
       createdAt: now,
       updatedAt: now,
     };
@@ -309,6 +339,23 @@ export const deleteWardrobe = async (userId: string, wardrobeId: string): Promis
   try {
     const wardrobeRef = doc(db, 'users', userId, 'wardrobes', wardrobeId);
     await deleteDoc(wardrobeRef);
+  } catch (error) {
+    const firestoreError = error as FirestoreError;
+    throw new Error(getFirestoreErrorMessage(firestoreError));
+  }
+};
+
+export const updateWardrobeShareableStatus = async (
+  userId: string,
+  wardrobeId: string,
+  isShareable: boolean
+): Promise<void> => {
+  try {
+    const wardrobeRef = doc(db, 'users', userId, 'wardrobes', wardrobeId);
+    await updateDoc(wardrobeRef, {
+      isShareable,
+      updatedAt: new Date().toISOString(),
+    });
   } catch (error) {
     const firestoreError = error as FirestoreError;
     throw new Error(getFirestoreErrorMessage(firestoreError));

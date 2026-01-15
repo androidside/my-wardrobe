@@ -3,6 +3,7 @@ import { LogOut, Lock, Mail, Upload, X, Camera, Plus, Edit2, Trash2 } from 'luci
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog,
@@ -22,6 +23,7 @@ import { useWardrobeContext } from '@/contexts/WardrobeContext';
 import { CreateWardrobeDialog } from './CreateWardrobeDialog';
 import { EditWardrobeDialog } from './EditWardrobeDialog';
 import { DeleteWardrobeDialog } from './DeleteWardrobeDialog';
+import { SocialSection } from './SocialSection';
 
 export function MyProfile() {
   const { user, logout } = useAuth();
@@ -45,6 +47,9 @@ export function MyProfile() {
     headSize: undefined,
     generalSize: undefined,
     profilePictureUrl: undefined,
+    privacySettings: {
+      allowDirectFollow: false,
+    },
     notes: '',
   });
   
@@ -651,6 +656,36 @@ export function MyProfile() {
               rows={4}
             />
           </div>
+
+          {/* Privacy Settings Section */}
+          <div className="pt-4 border-t border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Privacy Settings</h3>
+            
+            {/* Allow Direct Follow */}
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div className="space-y-1">
+                <Label htmlFor="allow-direct-follow" className="text-sm font-medium text-gray-900">
+                  Allow Direct Follow
+                </Label>
+                <p className="text-sm text-gray-500">
+                  Let users follow you directly without sending a friend request
+                </p>
+              </div>
+              <Switch
+                id="allow-direct-follow"
+                checked={profile.privacySettings?.allowDirectFollow ?? false}
+                onCheckedChange={(checked) =>
+                  setProfile({
+                    ...profile,
+                    privacySettings: {
+                      ...profile.privacySettings,
+                      allowDirectFollow: checked,
+                    },
+                  })
+                }
+              />
+            </div>
+          </div>
         </div>
 
         <div className="flex gap-3 mt-8">
@@ -668,6 +703,11 @@ export function MyProfile() {
           >
             Clear All
           </Button>
+        </div>
+
+        {/* Social Section */}
+        <div className="mt-8 pt-8 border-t border-gray-200">
+          <SocialSection />
         </div>
 
         {/* Manage My Wardrobes Section */}

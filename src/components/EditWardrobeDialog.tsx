@@ -3,7 +3,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { useWardrobeContext } from '@/contexts/WardrobeContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { updateWardrobeShareableStatus } from '@/services/firestore';
 
 interface EditWardrobeDialogProps {
   wardrobeId: string;
@@ -12,15 +15,18 @@ interface EditWardrobeDialogProps {
 }
 
 export function EditWardrobeDialog({ wardrobeId, open, onOpenChange }: EditWardrobeDialogProps) {
+  const { user } = useAuth();
   const { wardrobes, updateWardrobeName } = useWardrobeContext();
   const wardrobe = wardrobes.find((w) => w.id === wardrobeId);
   const [name, setName] = useState(wardrobe?.name || '');
+  const [isShareable, setIsShareable] = useState(wardrobe?.isShareable ?? false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (wardrobe) {
       setName(wardrobe.name);
+      setIsShareable(wardrobe.isShareable ?? false);
     }
   }, [wardrobe]);
 
@@ -32,7 +38,15 @@ export function EditWardrobeDialog({ wardrobeId, open, onOpenChange }: EditWardr
       return;
     }
 
-    if (name.trim() === wardrobe?.name) {
+    if (!user) {
+      setError('User not authenticated');
+      return;
+    }
+
+    const nameChanged = name.trim() !== wardrobe?.name;
+    const shareableChanged = isShareable !== (wardrobe?.isShareable ?? false);
+
+    if (!nameChanged && !shareableChanged) {
       onOpenChange(false);
       return;
     }
@@ -40,7 +54,17 @@ export function EditWardrobeDialog({ wardrobeId, open, onOpenChange }: EditWardr
     try {
       setLoading(true);
       setError(null);
-      await updateWardrobeName(wardrobeId, { name: name.trim() });
+      
+      // Update name if changed
+      if (nameChanged) {
+        await updateWardrobeName(wardrobeId, { name: name.trim() });
+      }
+      
+      // Update shareable status if changed
+      if (shareableChanged) {
+        await updateWardrobeShareableStatus(user.uid, wardrobeId, isShareable);
+      }
+      
       onOpenChange(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update wardrobe');
@@ -52,6 +76,7 @@ export function EditWardrobeDialog({ wardrobeId, open, onOpenChange }: EditWardr
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
       setName(wardrobe?.name || '');
+      setIsShareable(wardrobe?.isShareable ?? false);
       setError(null);
     }
     onOpenChange(newOpen);
@@ -81,10 +106,27 @@ export function EditWardrobeDialog({ wardrobeId, open, onOpenChange }: EditWardr
                 placeholder="e.g., New York, Home, Office"
                 autoFocus
               />
-              {error && (
-                <p className="text-sm text-red-600">{error}</p>
-              )}
             </div>
+            
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="shareable-toggle">Share with Friends</Label>
+                  <p className="text-sm text-gray-500">
+                    Allow your friends to view this wardrobe
+                  </p>
+                </div>
+                <Switch
+                  id="shareable-toggle"
+                  checked={isShareable}
+                  onCheckedChange={setIsShareable}
+                />
+              </div>
+            </div>
+            
+            {error && (
+              <p className="text-sm text-red-600">{error}</p>
+            )}
           </div>
           <DialogFooter>
             <Button

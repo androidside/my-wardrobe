@@ -6,21 +6,22 @@ import { ClothingItem } from '@/types/clothing';
 
 interface ClothingCardProps {
   item: ClothingItem;
-  imageUrl: string | null;
-  onEdit: (item: ClothingItem) => void;
-  onDelete: (id: string) => void;
+  imageUrl?: string | null;
+  onEdit?: (item: ClothingItem) => void;
+  onDelete?: (id: string) => void;
   onView?: (item: ClothingItem) => void;
+  showActions?: boolean; // If false, hide action buttons entirely (for friend wardrobes)
 }
 
-export function ClothingCard({ item, imageUrl, onEdit, onDelete, onView }: ClothingCardProps) {
-  const [showActions, setShowActions] = useState(false);
+export function ClothingCard({ item, imageUrl, onEdit, onDelete, onView, showActions = true }: ClothingCardProps) {
+  const [showActionsOverlay, setShowActionsOverlay] = useState(false);
 
   return (
     <Card
       className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-      onClick={() => onView ? onView(item) : setShowActions(!showActions)}
-      onMouseEnter={() => setShowActions(true)}
-      onMouseLeave={() => setShowActions(false)}
+      onClick={() => onView ? onView(item) : setShowActionsOverlay(!showActionsOverlay)}
+      onMouseEnter={() => setShowActionsOverlay(true)}
+      onMouseLeave={() => setShowActionsOverlay(false)}
     >
       {/* Image */}
       <div className="aspect-square bg-gray-100 relative overflow-hidden">
@@ -40,7 +41,7 @@ export function ClothingCard({ item, imageUrl, onEdit, onDelete, onView }: Cloth
         )}
 
         {/* Quick actions overlay */}
-        {showActions && (
+        {showActions && showActionsOverlay && onEdit && onDelete && (
           <div className="absolute inset-0 bg-black/60 flex items-center justify-center gap-2">
             <Button
               size="icon"

@@ -13,6 +13,11 @@ export interface UserProfile {
   country?: string;
   profilePictureUrl?: string; // URL to profile picture stored in Firebase Storage
   
+  // Privacy Settings
+  privacySettings?: {
+    allowDirectFollow: boolean; // If true, users can follow directly; if false, requires approval
+  };
+  
   // Size Information
   shoeSize?: string; // EU shoe size string from SHOE_SIZES
   pantsSizeUs?: string; // numeric or string (US sizing)
