@@ -94,11 +94,16 @@ export const sendFriendRequest = async (
       throw new Error('You are already friends with this user.');
     }
 
-    // Check if request already exists
+    // Check if request already exists (and is still pending)
     const existingRequestRef = doc(db, 'users', toUserId, 'friendRequests', fromUserId);
     const existingRequest = await getDoc(existingRequestRef);
     if (existingRequest.exists()) {
-      throw new Error('Friend request already sent.');
+      const existingData = existingRequest.data() as FriendRequest;
+      // Only block if status is pending
+      if (existingData.status === 'pending') {
+        throw new Error('Friend request already sent.');
+      }
+      // If rejected or accepted, we'll overwrite it (no need to delete first)
     }
 
     // Get sender's public profile for the request
@@ -165,6 +170,17 @@ export const acceptFriendRequest = async (
 
     const now = new Date().toISOString();
 
+    // Helper function to clean undefined values
+    const cleanData = (data: Record<string, any>): Record<string, any> => {
+      const cleaned: Record<string, any> = {};
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined) {
+          cleaned[key] = value;
+        }
+      });
+      return cleaned;
+    };
+
     // Add to both users' friends lists
     const friendData: Omit<Friend, 'id'> = {
       userId: friendUserId,
@@ -184,29 +200,20 @@ export const acceptFriendRequest = async (
       addedAt: now,
     };
 
-    // Add to my friends
-    await setDoc(doc(db, 'users', userId, 'friends', friendUserId), friendData);
-    // Add to their friends
-    await setDoc(doc(db, 'users', friendUserId, 'friends', userId), myData);
+    // Add to my friends (clean undefined values)
+    await setDoc(doc(db, 'users', userId, 'friends', friendUserId), cleanData(friendData));
+    // Add to their friends (clean undefined values)
+    await setDoc(doc(db, 'users', friendUserId, 'friends', userId), cleanData(myData));
 
-    // Update request status
-    await updateDoc(requestRef, {
-      status: 'accepted',
-      updatedAt: now,
-    });
+    // Delete the friend request (no need to update status first)
+    await deleteDoc(requestRef);
 
-    // Update sent request status
+    // Delete the sent request
     const sentRequestRef = doc(db, 'users', friendUserId, 'sentRequests', userId);
     const sentRequestSnap = await getDoc(sentRequestRef);
     if (sentRequestSnap.exists()) {
-      await updateDoc(sentRequestRef, {
-        status: 'accepted',
-        updatedAt: now,
-      });
+      await deleteDoc(sentRequestRef);
     }
-
-    // Delete the request after acceptance
-    await deleteDoc(requestRef);
   } catch (error) {
     console.error('Error accepting friend request:', error);
     if (error instanceof Error) {
@@ -233,22 +240,15 @@ export const rejectFriendRequest = async (
     }
 
     const request = requestSnap.data() as FriendRequest;
-    const now = new Date().toISOString();
 
-    // Update request status
-    await updateDoc(requestRef, {
-      status: 'rejected',
-      updatedAt: now,
-    });
+    // Delete the friend request (instead of just updating status)
+    await deleteDoc(requestRef);
 
-    // Update sent request status
+    // Delete the sent request
     const sentRequestRef = doc(db, 'users', request.fromUserId, 'sentRequests', userId);
     const sentRequestSnap = await getDoc(sentRequestRef);
     if (sentRequestSnap.exists()) {
-      await updateDoc(sentRequestRef, {
-        status: 'rejected',
-        updatedAt: now,
-      });
+      await deleteDoc(sentRequestRef);
     }
 
     // Delete the request after rejection
@@ -296,6 +296,17 @@ export const followUserDirectly = async (
 
     const now = new Date().toISOString();
 
+    // Helper function to clean undefined values
+    const cleanData = (data: Record<string, any>): Record<string, any> => {
+      const cleaned: Record<string, any> = {};
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined) {
+          cleaned[key] = value;
+        }
+      });
+      return cleaned;
+    };
+
     // Add to both users' friends lists
     const targetFriendData: Omit<Friend, 'id'> = {
       userId: targetUserId,
@@ -315,10 +326,10 @@ export const followUserDirectly = async (
       addedAt: now,
     };
 
-    // Add to my friends
-    await setDoc(doc(db, 'users', userId, 'friends', targetUserId), targetFriendData);
-    // Add to their friends
-    await setDoc(doc(db, 'users', targetUserId, 'friends', userId), myFriendData);
+    // Add to my friends (clean undefined values)
+    await setDoc(doc(db, 'users', userId, 'friends', targetUserId), cleanData(targetFriendData));
+    // Add to their friends (clean undefined values)
+    await setDoc(doc(db, 'users', targetUserId, 'friends', userId), cleanData(myFriendData));
   } catch (error) {
     console.error('Error following user:', error);
     if (error instanceof Error) {

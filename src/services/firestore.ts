@@ -8,6 +8,7 @@ import {
   updateDoc,
   deleteDoc,
   where,
+  limit,
   FirestoreError,
   writeBatch,
 } from 'firebase/firestore';
@@ -69,7 +70,8 @@ export const checkUsernameAvailability = async (username: string, excludeUserId?
     }
 
     const usersRef = collection(db, 'users');
-    const q = query(usersRef, where('username', '==', username));
+    // Add limit(1) to match security rule requirements and optimize query
+    const q = query(usersRef, where('username', '==', username), limit(1));
     const querySnapshot = await getDocs(q);
 
     // Check if username is taken by another user
@@ -124,8 +126,16 @@ export const saveUserProfile = async (userId: string, profile: UserProfile, skip
       }
     }
     
+    // Filter out undefined values - Firestore doesn't accept undefined
+    const cleanedProfile: Record<string, any> = {};
+    Object.entries(profile).forEach(([key, value]) => {
+      if (value !== undefined) {
+        cleanedProfile[key] = value;
+      }
+    });
+    
     const userRef = doc(db, 'users', userId);
-    await setDoc(userRef, profile, { merge: true });
+    await setDoc(userRef, cleanedProfile, { merge: true });
     console.log('Profile saved successfully');
   } catch (error) {
     console.error('Error saving profile:', error);
