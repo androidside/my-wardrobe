@@ -60,7 +60,7 @@ export function useWardrobes() {
         new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       );
       
-      setWardrobes((prevWardrobes) => {
+      setWardrobes((_prevWardrobes) => {
         // Only set first wardrobe if currentWardrobeId is null
         // Use functional update to get current state
         return loadedWardrobes;

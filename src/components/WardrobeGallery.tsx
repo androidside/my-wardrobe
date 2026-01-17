@@ -148,8 +148,6 @@ export function WardrobeGallery({ items, allItems, selectedType, selectedCategor
             // Get all items in this category
             const categoryItems = Object.values(itemsByCategory[category]).flat();
             const totalItems = categoryItems.length;
-            const firstItem = categoryItems[0];
-            const previewImageUrl = firstItem ? (imageUrls[firstItem.id] || null) : null;
             
             // Get icon path for category (use first type in category as representative)
             const categoryTypes = CLOTHING_TYPES_BY_CATEGORY[category];
@@ -200,7 +198,6 @@ export function WardrobeGallery({ items, allItems, selectedType, selectedCategor
   // Show types within selected category
   if (selectedCategory !== null && selectedType === null) {
     const categoryTypes = Object.keys(itemsByCategory[selectedCategory]).sort();
-    const numTypes = categoryTypes.length;
     
     return (
       <div className="h-[calc(100vh-8rem)] min-h-[500px] flex flex-col space-y-4 px-4 sm:px-6 lg:px-8 pt-0 pb-6">
@@ -222,8 +219,6 @@ export function WardrobeGallery({ items, allItems, selectedType, selectedCategor
         >
           {categoryTypes.map((type) => {
             const typeItems = itemsByCategory[selectedCategory][type];
-            const firstItem = typeItems[0];
-            const previewImageUrl = imageUrls[firstItem.id] || null;
             
             return (
               <button

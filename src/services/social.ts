@@ -11,7 +11,6 @@ import {
   collection,
   query,
   where,
-  updateDoc,
   deleteDoc,
   FirestoreError,
   orderBy,

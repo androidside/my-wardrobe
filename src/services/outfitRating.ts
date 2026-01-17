@@ -1,4 +1,4 @@
-import { ClothingItem } from '@/types/clothing';
+import { ClothingItem, FormalityLevel } from '@/types/clothing';
 import { getColorCompatibility, getTypeCompatibility } from '@/data/outfitCompatibility';
 
 export interface OutfitCombination {
@@ -85,14 +85,14 @@ export function calculateOutfitRating(outfit: OutfitCombination): OutfitRating {
   }
 
   // Calculate average score
-  const matrixScore = scores.length > 0 
+  let matrixScore = scores.length > 0 
     ? scores.reduce((sum, score) => sum + score, 0) / scores.length 
     : 5;
 
   // Apply formality matching bonus using user-defined formality levels
   const formalityLevels = items
     .map(item => item.formalityLevel)
-    .filter((level): level is number => level !== undefined);
+    .filter((level): level is FormalityLevel => level !== undefined);
   
   // Only check formality if all items have formality levels defined
   if (formalityLevels.length > 1 && formalityLevels.length === items.length) {
@@ -102,7 +102,7 @@ export function calculateOutfitRating(outfit: OutfitCombination): OutfitRating {
     if (variance <= 0.5) {
       // Very consistent formality levels
       const formalityBonus = 0.5;
-      const adjustedScore = matrixScore + formalityBonus;
+      matrixScore += formalityBonus;
       feedback.push('Great formality level consistency!');
       strengths.push('All items match in formality level');
     } else if (variance <= 1.5) {
@@ -153,7 +153,7 @@ export function calculateOutfitRating(outfit: OutfitCombination): OutfitRating {
  * Placeholder for AI-based outfit rating
  * This will be implemented later when AI integration is decided
  */
-export async function getAIOutfitRating(outfit: OutfitCombination): Promise<OutfitRating | null> {
+export async function getAIOutfitRating(_outfit: OutfitCombination): Promise<OutfitRating | null> {
   // TODO: Implement AI-based rating using OpenAI or similar
   // This is a placeholder that returns null for now
   console.log('[AI Rating] Placeholder - AI rating not yet implemented');

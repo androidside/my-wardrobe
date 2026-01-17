@@ -19,21 +19,20 @@ import {
 } from './components/ui/dialog';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { WardrobeProvider, useWardrobeContext } from './contexts/WardrobeContext';
-import { signup } from './services/auth';
+import { signup as authSignup } from './services/auth';
 import { useWardrobe } from './hooks/useWardrobe';
 import { ClothingItem, ClothingColor, ClothingCategory } from './types/clothing';
 import { LoginCredentials, SignupCredentials } from './types/auth';
-import { getUserProfile, saveUserProfile, getClothingItems, updateClothingItem } from './services/firestore';
-import { UserProfile } from './types/profile';
+import { saveUserProfile, getClothingItems, updateClothingItem } from './services/firestore';
 import { FittingRoom } from './components/FittingRoom';
 import './App.css';
 
 function AppContent() {
-  const { user, loading: authLoading, login, signup, logout } = useAuth();
+  const { user, loading: authLoading, login } = useAuth();
   const [authPage, setAuthPage] = useState<'login' | 'signup'>('login');
 
   // Wardrobes management
-  const { currentWardrobeId, wardrobes, loading: wardrobesLoading } = useWardrobeContext();
+  const { currentWardrobeId, loading: wardrobesLoading } = useWardrobeContext();
   
   // Wardrobe state - filter by current wardrobe
   // Key the hook by wardrobeId to force re-initialization when switching wardrobes
@@ -53,7 +52,6 @@ function AppContent() {
   const [selectedCategory, setSelectedCategory] = useState<ClothingCategory | null>(null); // Selected category
   const [filterBrand, setFilterBrand] = useState<string | 'All'>('All');
   const [filterColor, setFilterColor] = useState<string | 'All'>('All');
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [migrationDone, setMigrationDone] = useState(false);
 
   // Auth handlers
@@ -69,7 +67,7 @@ function AppContent() {
   const handleSignup = async (credentials: SignupCredentials) => {
     try {
       // Sign up the user
-      const authUser = await signup(credentials.email, credentials.password);
+      const authUser = await authSignup(credentials.email, credentials.password);
       
       // Save the profile data immediately after signup
       if (authUser && credentials.profile) {
@@ -99,22 +97,6 @@ function AppContent() {
     setActivePage(page);
   };
 
-  // Load user profile for header display
-  useEffect(() => {
-    const loadUserProfile = async () => {
-      if (user) {
-        try {
-          const profile = await getUserProfile(user.uid);
-          if (profile) {
-            setUserProfile(profile);
-          }
-        } catch (err) {
-          console.error('Error loading user profile:', err);
-        }
-      }
-    };
-    loadUserProfile();
-  }, [user]);
 
   // Migration: Move existing items without wardrobeId to default "Wardrobe 1"
   // Note: useWardrobes hook automatically creates "Wardrobe 1" if none exists

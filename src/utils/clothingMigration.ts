@@ -1,4 +1,4 @@
-import { ClothingItem, ClothingType, ClothingCategory, ClothingPattern } from '@/types/clothing';
+import { ClothingItem, ClothingType, ClothingCategory } from '@/types/clothing';
 
 // Migration mapping: Old Type → { Category, Type }
 const TYPE_MIGRATION_MAP: Record<ClothingType, { category: ClothingCategory; type: string }> = {
