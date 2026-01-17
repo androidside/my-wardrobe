@@ -17,22 +17,20 @@ interface FriendWardrobeViewProps {
 }
 
 const CATEGORY_ICONS: Record<string, string> = {
-  tops: '/icons/clothing/shirt.png',
-  bottoms: '/icons/clothing/pants.png',
-  footwear: '/icons/clothing/shoes.png',
-  outerwear: '/icons/clothing/jacket.png',
-  accessories: '/icons/clothing/accessories.png',
-  other: '/icons/clothing/other.png',
+  Tops: '/icons/clothing/shirt.png',
+  Bottoms: '/icons/clothing/pants.png',
+  Footwear: '/icons/clothing/shoes.png',
+  Outerwear: '/icons/clothing/jacket.png',
+  Accessories: '/icons/clothing/accessories.png',
 };
 
 const CATEGORIES = [
   { value: 'all', label: 'All Items' },
-  { value: 'tops', label: 'Tops' },
-  { value: 'bottoms', label: 'Bottoms' },
-  { value: 'footwear', label: 'Footwear' },
-  { value: 'outerwear', label: 'Outerwear' },
-  { value: 'accessories', label: 'Accessories' },
-  { value: 'other', label: 'Other' },
+  { value: 'Tops', label: 'Tops' },
+  { value: 'Bottoms', label: 'Bottoms' },
+  { value: 'Footwear', label: 'Footwear' },
+  { value: 'Outerwear', label: 'Outerwear' },
+  { value: 'Accessories', label: 'Accessories' },
 ];
 
 export function FriendWardrobeView({ friendId, friendUsername, onBack }: FriendWardrobeViewProps) {
