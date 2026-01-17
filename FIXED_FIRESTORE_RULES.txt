@@ -23,7 +23,14 @@ service cloud.firestore {
       
       // Legacy wardrobe collection (singular)
       match /wardrobe/{itemId} {
+        // Users can read/write their own items
         allow read, write: if request.auth != null && request.auth.uid == userId;
+        
+        // Friends can read items in shareable wardrobes
+        allow read: if request.auth != null 
+          && areFriends(userId, request.auth.uid)
+          && exists(/databases/$(database)/documents/users/$(userId)/wardrobes/$(resource.data.wardrobeId))
+          && get(/databases/$(database)/documents/users/$(userId)/wardrobes/$(resource.data.wardrobeId)).data.isShareable == true;
       }
       
       // Wardrobes collection
