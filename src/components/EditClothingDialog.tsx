@@ -198,6 +198,7 @@ export function EditClothingDialog({
   
   // Determine which sizes to show based on clothing type
   const showingShoeSizes = type && isFootwearType(type);
+  const isPantsOrJeans = type === 'Pants' || type === 'Jeans';
   const availableSizes = showingShoeSizes ? SHOE_SIZES : REGULAR_SIZES;
 
   // Reset type when category changes
@@ -213,13 +214,18 @@ export function EditClothingDialog({
   // Reset size when switching between footwear and regular clothing
   useEffect(() => {
     if (type && size) {
+      // Don't validate or reset size for pants/jeans (they use text input)
+      if (isPantsOrJeans) {
+        return;
+      }
+      
       const isSizeValid = availableSizes.some((s) => s === (size as any));
       if (!isSizeValid) {
         // Set default size based on type
         setSize(showingShoeSizes ? '40' : 'M');
       }
     }
-  }, [type, size, showingShoeSizes, availableSizes]);
+  }, [type, size, showingShoeSizes, availableSizes, isPantsOrJeans]);
 
   // Load item data when dialog opens
   useEffect(() => {
@@ -444,20 +450,36 @@ export function EditClothingDialog({
           {/* Size */}
           <div>
             <Label htmlFor="edit-size" className="text-base">
-              {showingShoeSizes ? 'Size (European) *' : 'Size *'}
+              {showingShoeSizes 
+                ? 'Size (European) *' 
+                : isPantsOrJeans 
+                ? 'Pants Size (US) *' 
+                : 'Size *'}
             </Label>
-            <Select value={size} onValueChange={(value) => setSize(value as ClothingSize)}>
-              <SelectTrigger id="edit-size" className="mt-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {availableSizes.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {showingShoeSizes ? formatShoeSize(s as any) : s}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {isPantsOrJeans ? (
+              <Input
+                id="edit-size"
+                type="text"
+                value={size}
+                onChange={(e) => setSize(e.target.value as ClothingSize)}
+                placeholder="e.g., 32, 34, 36, M, L"
+                required
+                className="mt-1"
+              />
+            ) : (
+              <Select value={size} onValueChange={(value) => setSize(value as ClothingSize)}>
+                <SelectTrigger id="edit-size" className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableSizes.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {showingShoeSizes ? formatShoeSize(s as any) : s}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           {/* Primary Color */}
