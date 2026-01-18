@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Settings, Users, ArrowLeft, LogOut, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { getUserProfile, getPublicUserProfile, getWardrobes, getClothingItems } from '@/services/firestore';
+import { getUserProfile, getPublicUserProfile, getWardrobes } from '@/services/firestore';
 import { getFriends, getFriendWardrobes } from '@/services/social';
+import { wardrobeStorageService } from '@/services/wardrobeStorage';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserProfile } from '@/types/profile';
 import { Wardrobe } from '@/types/wardrobe';
@@ -95,7 +96,7 @@ export function UserProfileView({
       };
 
       for (const wardrobe of wardrobesList) {
-        const items = await getClothingItems(userId, wardrobe.id);
+        const items = await wardrobeStorageService.getAllItems(userId, wardrobe.id);
         itemsCount += items.length;
 
         // Count by category
