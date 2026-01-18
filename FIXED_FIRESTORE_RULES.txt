@@ -69,6 +69,9 @@ service cloud.firestore {
         // Users can read their own friends
         allow read: if request.auth != null && request.auth.uid == userId;
         
+        // Friends can read each other's friends lists (for social features)
+        allow read: if request.auth != null && areFriends(userId, request.auth.uid);
+        
         // Users can write to their own friends collection
         allow write: if request.auth != null && request.auth.uid == userId;
         
