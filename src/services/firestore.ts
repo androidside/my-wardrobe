@@ -154,11 +154,45 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
     const userSnap = await getDoc(userRef);
 
     if (userSnap.exists()) {
-      console.log('Profile loaded:', userSnap.data());
-      return userSnap.data() as UserProfile;
+      const profileData = userSnap.data() as UserProfile;
+      console.log('Profile loaded:', profileData);
+      
+      // For existing users: ensure userId and default privacy settings exist
+      let needsUpdate = false;
+      const updates: Partial<UserProfile> = {};
+      
+      if (!profileData.userId) {
+        updates.userId = userId;
+        needsUpdate = true;
+      }
+      
+      if (!profileData.privacySettings) {
+        updates.privacySettings = { allowDirectFollow: false };
+        needsUpdate = true;
+      }
+      
+      // Apply updates if needed
+      if (needsUpdate) {
+        console.log('Updating existing profile with missing fields:', updates);
+        await setDoc(userRef, updates, { merge: true });
+        return { ...profileData, ...updates };
+      }
+      
+      return profileData;
     }
-    console.log('No profile found for user');
-    return null;
+    
+    // If no profile exists at all, create a minimal one for existing users
+    console.log('No profile found for user, creating minimal profile');
+    const minimalProfile: UserProfile = {
+      userId: userId,
+      privacySettings: {
+        allowDirectFollow: false,
+      },
+    };
+    
+    await setDoc(userRef, minimalProfile);
+    console.log('Minimal profile created for user:', userId);
+    return minimalProfile;
   } catch (error) {
     console.error('Error loading profile:', error);
     const firestoreError = error as FirestoreError;
