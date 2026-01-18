@@ -183,6 +183,7 @@ export function ManageWardrobesView({ onBack }: ManageWardrobesViewProps) {
           setShowCreateDialog(open);
           if (!open) handleDialogClose();
         }}
+        switchToNewWardrobe={false}
       />
 
       {editingWardrobeId && (

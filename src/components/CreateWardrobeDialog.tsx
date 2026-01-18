@@ -8,9 +8,10 @@ import { useWardrobeContext } from '@/contexts/WardrobeContext';
 interface CreateWardrobeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  switchToNewWardrobe?: boolean; // Whether to automatically switch to the newly created wardrobe
 }
 
-export function CreateWardrobeDialog({ open, onOpenChange }: CreateWardrobeDialogProps) {
+export function CreateWardrobeDialog({ open, onOpenChange, switchToNewWardrobe = true }: CreateWardrobeDialogProps) {
   const { createNewWardrobe, setCurrentWardrobeId } = useWardrobeContext();
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -28,8 +29,10 @@ export function CreateWardrobeDialog({ open, onOpenChange }: CreateWardrobeDialo
       setLoading(true);
       setError(null);
       const newWardrobe = await createNewWardrobe({ name: name.trim() });
-      // Automatically switch to the newly created wardrobe
-      setCurrentWardrobeId(newWardrobe.id);
+      // Automatically switch to the newly created wardrobe (if enabled)
+      if (switchToNewWardrobe) {
+        setCurrentWardrobeId(newWardrobe.id);
+      }
       setName('');
       onOpenChange(false);
     } catch (err) {
