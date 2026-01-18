@@ -50,48 +50,44 @@ export function WardrobeSelector({ onWardrobeChange }: WardrobeSelectorProps) {
   }
 
   return (
-    <>
-      <div className="flex items-center gap-2">
-        <Select
-          value={currentWardrobeId || undefined}
-          onValueChange={(value) => {
-            console.log('[WardrobeSelector] Select onValueChange called with:', value);
-            handleWardrobeChange(value);
-          }}
-        >
-          <SelectTrigger className="w-auto min-w-[180px] sm:min-w-[220px]">
-            <SelectValue placeholder="Select wardrobe">
-              {currentWardrobe ? (
-                <div className="flex items-center justify-between w-full">
-                  <span className="truncate">{currentWardrobe.name}</span>
-                  {itemCounts[currentWardrobe.id] !== undefined && (
-                    <span className="ml-2 text-xs text-gray-500">
-                      ({itemCounts[currentWardrobe.id]})
-                    </span>
-                  )}
-                </div>
-              ) : (
-                'Select wardrobe'
+    <Select
+      value={currentWardrobeId || undefined}
+      onValueChange={(value) => {
+        console.log('[WardrobeSelector] Select onValueChange called with:', value);
+        handleWardrobeChange(value);
+      }}
+    >
+      <SelectTrigger className="w-full bg-white shadow">
+        <SelectValue placeholder="Select wardrobe">
+          {currentWardrobe ? (
+            <div className="flex items-center justify-between w-full">
+              <span className="truncate">{currentWardrobe.name}</span>
+              {itemCounts[currentWardrobe.id] !== undefined && (
+                <span className="ml-2 text-xs text-gray-500">
+                  ({itemCounts[currentWardrobe.id]})
+                </span>
               )}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {wardrobes.map((wardrobe) => (
-              <SelectItem key={wardrobe.id} value={wardrobe.id}>
-                <div className="flex items-center justify-between w-full">
-                  <span className="truncate">{wardrobe.name}</span>
-                  {itemCounts[wardrobe.id] !== undefined && (
-                    <span className="ml-2 text-xs text-gray-500">
-                      ({itemCounts[wardrobe.id]})
-                    </span>
-                  )}
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-    </>
+            </div>
+          ) : (
+            'Select wardrobe'
+          )}
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        {wardrobes.map((wardrobe) => (
+          <SelectItem key={wardrobe.id} value={wardrobe.id}>
+            <div className="flex items-center justify-between w-full">
+              <span className="truncate">{wardrobe.name}</span>
+              {itemCounts[wardrobe.id] !== undefined && (
+                <span className="ml-2 text-xs text-gray-500">
+                  ({itemCounts[wardrobe.id]})
+                </span>
+              )}
+            </div>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 

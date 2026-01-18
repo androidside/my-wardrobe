@@ -245,17 +245,16 @@ function AppContent() {
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">🚪 My Fitting Room</h1>
               </div>
             ) : (
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <WardrobeSelector onWardrobeChange={handleWardrobeChange} />
-                </div>
-                {selectedCategory && (
-                  <div className="text-right">
-                    <h2 className="text-xl font-semibold text-gray-900">{selectedCategory}</h2>
-                  </div>
-                )}
-                {!selectedCategory && (selectedType !== null || filterBrand !== 'All' || filterColor !== 'All') && (
-                  <div className="text-right">
+              <div className="flex items-center justify-between gap-4">
+                {/* Left side: Title and filters */}
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-2xl font-bold text-gray-900 mb-1">My Wardrobe</h1>
+                  {selectedCategory && (
+                    <p className="text-sm text-gray-600">
+                      Viewing: <span className="font-medium">{selectedCategory}</span>
+                    </p>
+                  )}
+                  {!selectedCategory && (selectedType !== null || filterBrand !== 'All' || filterColor !== 'All') && (
                     <p className="text-xs text-gray-500">
                       {selectedType !== null && <span>{selectedType}</span>}
                       {selectedType !== null && filterBrand !== 'All' && <span> • </span>}
@@ -263,8 +262,13 @@ function AppContent() {
                       {filterBrand !== 'All' && filterColor !== 'All' && <span> • </span>}
                       {filterColor !== 'All' && <span>{filterColor}</span>}
                     </p>
-                  </div>
-                )}
+                  )}
+                </div>
+                
+                {/* Right side: Wardrobe selector */}
+                <div className="min-w-[200px]">
+                  <WardrobeSelector onWardrobeChange={handleWardrobeChange} />
+                </div>
               </div>
             )}
           </div>
