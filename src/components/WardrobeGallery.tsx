@@ -180,13 +180,14 @@ export function WardrobeGallery({ items, allItems, selectedType, selectedCategor
               <button
                 key={category}
                 onClick={() => onCategorySelect(category)}
-                className="group relative bg-white rounded-lg shadow hover:shadow-md transition-shadow duration-200 overflow-hidden border border-gray-100 hover:border-indigo-300 flex flex-col aspect-square"
+                className="group bg-white rounded-lg shadow hover:shadow-md transition-shadow duration-200 overflow-hidden flex flex-col aspect-square"
               >
-                <div className="flex-1 relative bg-white overflow-hidden flex items-center justify-center">
+                {/* Icon area with subtle gradient background */}
+                <div className="flex-1 relative bg-gradient-to-br from-indigo-50 to-purple-50 overflow-hidden flex items-center justify-center">
                   <img
                     src={getTypeIconPath(representativeType)}
                     alt={category}
-                    className="w-full h-full object-contain p-4 sm:p-6 md:p-8"
+                    className="w-full h-full object-contain p-6 group-hover:scale-105 transition-transform duration-200"
                     onError={(e) => {
                       // If image fails to load, replace with emoji
                       const target = e.target as HTMLImageElement;
@@ -198,15 +199,16 @@ export function WardrobeGallery({ items, allItems, selectedType, selectedCategor
                     }}
                   />
                   <span 
-                    className="absolute inset-0 hidden items-center justify-center text-4xl sm:text-5xl md:text-6xl bg-white"
+                    className="absolute inset-0 hidden items-center justify-center text-5xl"
                     style={{ display: 'none' }}
                   >
                     {TYPE_EMOJIS[representativeType] || '👕'}
                   </span>
                 </div>
-                <div className="p-3 sm:p-4 text-center bg-white flex-shrink-0">
-                  <h3 className="font-bold text-gray-900 text-sm sm:text-base md:text-lg mb-1">{category}</h3>
-                  <p className="text-xs sm:text-sm text-gray-500 font-medium">
+                {/* Text area with border separator */}
+                <div className="p-4 text-center bg-white border-t border-gray-100">
+                  <h3 className="font-semibold text-gray-900 text-base mb-1">{category}</h3>
+                  <p className="text-sm text-gray-600">
                     {totalItems} {totalItems === 1 ? 'item' : 'items'}
                   </p>
                 </div>
@@ -244,13 +246,14 @@ export function WardrobeGallery({ items, allItems, selectedType, selectedCategor
               <button
                 key={type}
                 onClick={() => onTypeSelect(type)}
-                className="group relative bg-white rounded-lg shadow hover:shadow-md transition-shadow duration-200 overflow-hidden border border-gray-100 hover:border-indigo-300 flex flex-col aspect-square"
+                className="group bg-white rounded-lg shadow hover:shadow-md transition-shadow duration-200 overflow-hidden flex flex-col aspect-square"
               >
-                <div className="flex-1 relative bg-white overflow-hidden flex items-center justify-center">
+                {/* Icon area with subtle gradient background */}
+                <div className="flex-1 relative bg-gradient-to-br from-indigo-50 to-purple-50 overflow-hidden flex items-center justify-center">
                   <img
                     src={getTypeIconPath(type)}
                     alt={type}
-                    className="w-full h-full object-contain p-3 sm:p-4 md:p-5"
+                    className="w-full h-full object-contain p-5 group-hover:scale-105 transition-transform duration-200"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       target.style.display = 'none';
@@ -261,15 +264,16 @@ export function WardrobeGallery({ items, allItems, selectedType, selectedCategor
                     }}
                   />
                   <span 
-                    className="absolute inset-0 hidden items-center justify-center text-3xl sm:text-4xl md:text-5xl bg-white"
+                    className="absolute inset-0 hidden items-center justify-center text-4xl"
                     style={{ display: 'none' }}
                   >
                     {TYPE_EMOJIS[type] || '👕'}
                   </span>
                 </div>
-                <div className="p-2 sm:p-3 text-center bg-white flex-shrink-0">
-                  <h3 className="font-bold text-gray-900 text-xs sm:text-sm md:text-base truncate">{type}</h3>
-                  <p className="text-[10px] sm:text-xs md:text-sm text-gray-500 font-medium mt-0.5">
+                {/* Text area with border separator */}
+                <div className="p-3 text-center bg-white border-t border-gray-100">
+                  <h3 className="font-semibold text-gray-900 text-sm truncate">{type}</h3>
+                  <p className="text-xs text-gray-600 mt-1">
                     {typeItems.length} {typeItems.length === 1 ? 'item' : 'items'}
                   </p>
                 </div>

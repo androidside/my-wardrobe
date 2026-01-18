@@ -224,7 +224,7 @@ function AppContent() {
                 </div>
                 {selectedCategory && (
                   <div className="text-right">
-                    <h2 className="text-lg sm:text-xl font-semibold text-gray-900">{selectedCategory}</h2>
+                    <h2 className="text-xl font-semibold text-gray-900">{selectedCategory}</h2>
                   </div>
                 )}
                 {!selectedCategory && (selectedType !== null || filterBrand !== 'All' || filterColor !== 'All') && (
