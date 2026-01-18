@@ -9,6 +9,7 @@ import { FriendsListView } from './components/FriendsListView';
 import { SettingsView } from './components/SettingsView';
 import { ManageWardrobesView } from './components/ManageWardrobesView';
 import { FriendWardrobeView } from './components/FriendWardrobeView';
+import { StatisticsView } from './components/StatisticsView';
 import { ClothingDetailsDialog } from './components/ClothingDetailsDialog';
 import { EditClothingDialog } from './components/EditClothingDialog';
 import { BottomNavigation } from './components/BottomNavigation';
@@ -36,7 +37,7 @@ function AppContent() {
   const [authPage, setAuthPage] = useState<'login' | 'signup'>('login');
 
   // Wardrobes management
-  const { currentWardrobeId, loading: wardrobesLoading } = useWardrobeContext();
+  const { currentWardrobeId, wardrobes, loading: wardrobesLoading } = useWardrobeContext();
   
   // Wardrobe state - filter by current wardrobe
   // Key the hook by wardrobeId to force re-initialization when switching wardrobes
@@ -50,7 +51,7 @@ function AppContent() {
   // The useWardrobe hook's useEffect will automatically reload when wardrobeId changes
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingItem, setEditingItem] = useState<ClothingItem | null>(null);
-  const [activePage, setActivePage] = useState<'wardrobe' | 'fitting-room' | 'profile'>('wardrobe');
+  const [activePage, setActivePage] = useState<'wardrobe' | 'fitting-room' | 'stats' | 'profile'>('wardrobe');
   const [selectedItem, setSelectedItem] = useState<ClothingItem | null>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null); // Selected type category
   const [selectedCategory, setSelectedCategory] = useState<ClothingCategory | null>(null); // Selected category
@@ -206,11 +207,37 @@ function AppContent() {
     );
   }
 
+  // Handlers for stats interactions
+  const handleStatsFilterCategory = (category: ClothingCategory) => {
+    setSelectedCategory(category);
+    setFilterBrand('All');
+    setFilterColor('All');
+    setActivePage('wardrobe');
+  };
+
+  const handleStatsFilterColor = (color: ClothingColor) => {
+    setFilterColor(color);
+    setFilterBrand('All');
+    setSelectedCategory(null);
+    setActivePage('wardrobe');
+  };
+
+  const handleStatsFilterBrand = (brand: string) => {
+    setFilterBrand(brand);
+    setFilterColor('All');
+    setSelectedCategory(null);
+    setActivePage('wardrobe');
+  };
+
+  // Get current wardrobe name
+  const currentWardrobe = wardrobes.find(w => w.id === currentWardrobeId);
+  const currentWardrobeName = currentWardrobe?.name || 'Current Wardrobe';
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header - Scrolls away */}
-      {/* Header - Hide on profile page since each profile view has its own header */}
-      {activePage !== 'profile' && (
+      {/* Header - Hide on profile and stats pages since they have their own headers */}
+      {activePage !== 'profile' && activePage !== 'stats' && (
         <header className="bg-white shadow">
           <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
             {activePage === 'fitting-room' ? (
@@ -358,6 +385,18 @@ function AppContent() {
           </>
         ) : activePage === 'fitting-room' ? (
           <FittingRoom items={items} />
+        ) : activePage === 'stats' ? (
+          <StatisticsView
+            currentWardrobeItems={items}
+            currentWardrobeId={currentWardrobeId}
+            currentWardrobeName={currentWardrobeName}
+            wardrobes={wardrobes}
+            userId={user!.uid}
+            onFilterCategory={handleStatsFilterCategory}
+            onFilterColor={handleStatsFilterColor}
+            onFilterBrand={handleStatsFilterBrand}
+            onNavigateToWardrobe={() => setActivePage('wardrobe')}
+          />
         ) : null}
       </main>
 
