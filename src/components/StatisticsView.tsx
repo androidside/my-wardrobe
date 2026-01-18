@@ -88,10 +88,6 @@ export function StatisticsView({
   const formalityDistribution = calculateFormalityDistribution(displayItems);
   const tagStats = calculateTagStats(displayItems);
 
-  // Debug logging
-  console.log('Stats - displayItems count:', displayItems.length);
-  console.log('Stats - colorStats:', colorStats);
-
   // Handle chart interactions
   const handleCategoryClick = (data: CategoryDistribution) => {
     if (onFilterCategory) {
