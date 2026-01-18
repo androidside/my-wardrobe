@@ -12,25 +12,7 @@ export function WardrobeSelector({ onWardrobeChange }: WardrobeSelectorProps) {
     currentWardrobeId,
     setCurrentWardrobeId,
     loading,
-    getItemCount,
   } = useWardrobeContext();
-  
-  const [itemCounts, setItemCounts] = useState<Record<string, number>>({});
-
-  // Load item counts for all wardrobes
-  useEffect(() => {
-    const loadCounts = async () => {
-      const counts: Record<string, number> = {};
-      for (const wardrobe of wardrobes) {
-        counts[wardrobe.id] = await getItemCount(wardrobe.id);
-      }
-      setItemCounts(counts);
-    };
-
-    if (wardrobes.length > 0) {
-      loadCounts();
-    }
-  }, [wardrobes, getItemCount]);
 
   const handleWardrobeChange = (wardrobeId: string) => {
     console.log('[WardrobeSelector] Changing wardrobe to:', wardrobeId, 'from:', currentWardrobeId);
@@ -59,31 +41,13 @@ export function WardrobeSelector({ onWardrobeChange }: WardrobeSelectorProps) {
     >
       <SelectTrigger className="w-full bg-white shadow">
         <SelectValue placeholder="Select wardrobe">
-          {currentWardrobe ? (
-            <div className="flex items-center justify-between w-full">
-              <span className="truncate">{currentWardrobe.name}</span>
-              {itemCounts[currentWardrobe.id] !== undefined && (
-                <span className="ml-2 text-xs text-gray-500">
-                  ({itemCounts[currentWardrobe.id]})
-                </span>
-              )}
-            </div>
-          ) : (
-            'Select wardrobe'
-          )}
+          {currentWardrobe ? currentWardrobe.name : 'Select wardrobe'}
         </SelectValue>
       </SelectTrigger>
       <SelectContent>
         {wardrobes.map((wardrobe) => (
           <SelectItem key={wardrobe.id} value={wardrobe.id}>
-            <div className="flex items-center justify-between w-full">
-              <span className="truncate">{wardrobe.name}</span>
-              {itemCounts[wardrobe.id] !== undefined && (
-                <span className="ml-2 text-xs text-gray-500">
-                  ({itemCounts[wardrobe.id]})
-                </span>
-              )}
-            </div>
+            {wardrobe.name}
           </SelectItem>
         ))}
       </SelectContent>
