@@ -237,7 +237,7 @@ export function LoginPage({ onSwitchToSignup, onLogin }: LoginPageProps) {
                   <strong>Email sent!</strong> Please check your inbox at <strong>{resetEmail}</strong> for instructions to reset your password.
                 </p>
                 <p className="text-xs text-green-700 mt-2">
-                  Note: This is a placeholder. The actual email sending functionality will be implemented soon.
+                  Can't find the email? Check your spam or junk folder. The email may take a few minutes to arrive.
                 </p>
               </div>
               <Button
