@@ -7,6 +7,7 @@ import { WardrobeGallery } from './components/WardrobeGallery';
 import { UserProfileView } from './components/UserProfileView';
 import { FriendsListView } from './components/FriendsListView';
 import { SettingsView } from './components/SettingsView';
+import { ManageWardrobesView } from './components/ManageWardrobesView';
 import { FriendWardrobeView } from './components/FriendWardrobeView';
 import { ClothingDetailsDialog } from './components/ClothingDetailsDialog';
 import { EditClothingDialog } from './components/EditClothingDialog';
@@ -58,7 +59,7 @@ function AppContent() {
   const [migrationDone, setMigrationDone] = useState(false);
 
   // Profile view routing
-  type ProfileView = 'own' | 'friend' | 'friends-list' | 'settings' | 'friend-wardrobe';
+  type ProfileView = 'own' | 'friend' | 'friends-list' | 'settings' | 'friend-wardrobe' | 'manage-wardrobes';
   const [profileView, setProfileView] = useState<ProfileView>('own');
   const [viewingFriendId, setViewingFriendId] = useState<string | null>(null);
   const [viewingFriendUsername, setViewingFriendUsername] = useState<string | null>(null);
@@ -346,7 +347,13 @@ function AppContent() {
               />
             )}
             {profileView === 'settings' && (
-              <SettingsView onBack={() => setProfileView('own')} />
+              <SettingsView 
+                onBack={() => setProfileView('own')} 
+                onNavigateToWardrobes={() => setProfileView('manage-wardrobes')}
+              />
+            )}
+            {profileView === 'manage-wardrobes' && (
+              <ManageWardrobesView onBack={() => setProfileView('settings')} />
             )}
           </>
         ) : activePage === 'fitting-room' ? (

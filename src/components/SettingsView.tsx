@@ -2,17 +2,16 @@ import { useState } from 'react';
 import { ArrowLeft, User, Lock, Shield, FolderOpen, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PersonalInfoDialog } from './PersonalInfoDialog';
-import { ManageWardrobesView } from './ManageWardrobesView';
 
 interface SettingsViewProps {
   onBack: () => void;
+  onNavigateToWardrobes?: () => void;
 }
 
-export function SettingsView({ onBack }: SettingsViewProps) {
+export function SettingsView({ onBack, onNavigateToWardrobes }: SettingsViewProps) {
   const [showPersonalInfoDialog, setShowPersonalInfoDialog] = useState(false);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [showPrivacyDialog, setShowPrivacyDialog] = useState(false);
-  const [showWardrobesView, setShowWardrobesView] = useState(false);
 
   const settingsSections = [
     {
@@ -47,16 +46,11 @@ export function SettingsView({ onBack }: SettingsViewProps) {
       icon: FolderOpen,
       title: 'Manage Wardrobes',
       description: 'Create, edit, and delete your wardrobes',
-      onClick: () => setShowWardrobesView(true),
+      onClick: onNavigateToWardrobes || (() => {}),
       color: 'text-purple-600',
       bgColor: 'bg-purple-50',
     },
   ];
-
-  // If showing wardrobes view, render that instead
-  if (showWardrobesView) {
-    return <ManageWardrobesView onBack={() => setShowWardrobesView(false)} />;
-  }
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
