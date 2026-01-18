@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { ClothingItem, ClothingCategory, ClothingColor } from '@/types/clothing';
 import { Wardrobe } from '@/types/wardrobe';
-import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   PieChart,
   Pie,
@@ -33,6 +33,7 @@ import {
   type TagStat,
 } from '@/utils/statsUtils';
 import { TrendingUp, DollarSign, ShoppingBag, Tag } from 'lucide-react';
+import { getClothingItems } from '@/services/firestore';
 
 interface StatisticsViewProps {
   currentWardrobeItems: ClothingItem[];
@@ -57,28 +58,67 @@ export function StatisticsView({
   onFilterBrand,
   onNavigateToWardrobe,
 }: StatisticsViewProps) {
-  const [viewMode, setViewMode] = useState<'current' | 'all'>('current');
-  const [allItems, setAllItems] = useState<ClothingItem[]>([]);
+  // Selected wardrobe ID or 'all' for all wardrobes
+  const [selectedWardrobeId, setSelectedWardrobeId] = useState<string>(currentWardrobeId || 'all');
+  const [wardrobeItemsCache, setWardrobeItemsCache] = useState<Record<string, ClothingItem[]>>({});
   const [loading, setLoading] = useState(false);
 
-  // Fetch all items when switching to "all" mode
+  // Initialize with current wardrobe
   useEffect(() => {
-    if (viewMode === 'all' && allItems.length === 0) {
-      setLoading(true);
-      getAllItemsForUser(userId, wardrobes)
-        .then(items => {
-          setAllItems(items);
-          setLoading(false);
-        })
-        .catch(error => {
-          console.error('Error loading all items:', error);
-          setLoading(false);
-        });
+    if (currentWardrobeId && !wardrobeItemsCache[currentWardrobeId]) {
+      setWardrobeItemsCache(prev => ({
+        ...prev,
+        [currentWardrobeId]: currentWardrobeItems,
+      }));
     }
-  }, [viewMode, userId, wardrobes, allItems.length]);
+  }, [currentWardrobeId, currentWardrobeItems, wardrobeItemsCache]);
 
-  // Determine which items to display
-  const displayItems = viewMode === 'current' ? currentWardrobeItems : allItems;
+  // Fetch items when wardrobe selection changes
+  useEffect(() => {
+    const loadItems = async () => {
+      // If "all" is selected, fetch all items
+      if (selectedWardrobeId === 'all') {
+        if (!wardrobeItemsCache['all']) {
+          setLoading(true);
+          try {
+            const items = await getAllItemsForUser(userId, wardrobes);
+            setWardrobeItemsCache(prev => ({ ...prev, all: items }));
+          } catch (error) {
+            console.error('Error loading all items:', error);
+          } finally {
+            setLoading(false);
+          }
+        }
+      } 
+      // If specific wardrobe is selected and not in cache
+      else if (selectedWardrobeId && !wardrobeItemsCache[selectedWardrobeId]) {
+        // Skip if it's the current wardrobe (already loaded)
+        if (selectedWardrobeId === currentWardrobeId) {
+          return;
+        }
+        
+        setLoading(true);
+        try {
+          const items = await getClothingItems(userId, selectedWardrobeId);
+          setWardrobeItemsCache(prev => ({ ...prev, [selectedWardrobeId]: items }));
+        } catch (error) {
+          console.error('Error loading wardrobe items:', error);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadItems();
+  }, [selectedWardrobeId, userId, wardrobes, wardrobeItemsCache, currentWardrobeId]);
+
+  // Determine which items to display based on selection
+  const displayItems = wardrobeItemsCache[selectedWardrobeId] || [];
+  
+  // Get selected wardrobe name for display
+  const selectedWardrobeName = selectedWardrobeId === 'all' 
+    ? 'All Wardrobes' 
+    : wardrobes.find(w => w.id === selectedWardrobeId)?.name || 'Select Wardrobe';
 
   // Calculate all statistics
   const overviewStats = calculateOverviewStats(displayItems);
@@ -141,21 +181,27 @@ export function StatisticsView({
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-        {/* Header with Toggle */}
-        <div className="flex items-center justify-between">
+        {/* Header with Wardrobe Selector */}
+        <div className="flex items-center justify-between gap-4">
           <h1 className="text-2xl font-bold text-gray-900">Wardrobe Insights</h1>
           
-          <div className="flex items-center gap-3 bg-white rounded-lg shadow px-4 py-2">
-            <Label htmlFor="view-mode" className="text-sm font-medium text-gray-700">
-              {viewMode === 'current' 
-                ? currentWardrobeName || 'Current' 
-                : 'All Wardrobes'}
-            </Label>
-            <Switch
-              id="view-mode"
-              checked={viewMode === 'all'}
-              onCheckedChange={(checked) => setViewMode(checked ? 'all' : 'current')}
-            />
+          <div className="min-w-[200px]">
+            <Select
+              value={selectedWardrobeId}
+              onValueChange={setSelectedWardrobeId}
+            >
+              <SelectTrigger className="bg-white shadow">
+                <SelectValue placeholder="Select wardrobe" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Wardrobes</SelectItem>
+                {wardrobes.map((wardrobe) => (
+                  <SelectItem key={wardrobe.id} value={wardrobe.id}>
+                    {wardrobe.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
