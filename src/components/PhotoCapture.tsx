@@ -3,6 +3,7 @@ import { Upload, X, Edit2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ClothingAnalysis, analyzeClothingImage } from '@/services/imageAnalysis';
 import { ImageEditor } from './ImageEditor';
+import { compressImage, COMPRESSION_PRESETS } from '@/utils/imageCompression';
 
 interface PhotoCaptureProps {
   onPhotoCapture: (blob: Blob) => void;
@@ -40,39 +41,64 @@ export function PhotoCapture({ onPhotoCapture, initialPreview, onAnalysisComplet
   };
 
   const handleEditorSave = async (croppedBlob: Blob) => {
-    // Create preview from cropped blob
-    const previewUrl = URL.createObjectURL(croppedBlob);
-    setPreview(previewUrl);
-    setFinalImageBlob(croppedBlob);
+    try {
+      // Compress the cropped image before saving
+      console.log('[PhotoCapture] Compressing image...');
+      const compressedBlob = await compressImage(
+        croppedBlob,
+        COMPRESSION_PRESETS.HIGH_QUALITY.maxWidth,
+        COMPRESSION_PRESETS.HIGH_QUALITY.quality
+      );
+      
+      // Create preview from compressed blob
+      const previewUrl = URL.createObjectURL(compressedBlob);
+      setPreview(previewUrl);
+      setFinalImageBlob(compressedBlob);
 
-    // Clean up temp image URL
-    if (tempImageUrl) {
-      URL.revokeObjectURL(tempImageUrl);
-      setTempImageUrl(null);
-    }
-
-    // Close editor
-    setShowEditor(false);
-
-    // Call callback with cropped blob
-    onPhotoCapture(croppedBlob);
-
-    // Trigger AI analysis if callbacks are provided
-    if (onAnalysisComplete) {
-      console.log('[PhotoCapture] Analysis callbacks provided, starting analysis...');
-      try {
-        onAnalysisStart?.();
-        console.log('[PhotoCapture] Analysis start callback called');
-        const analysis = await analyzeClothingImage(croppedBlob);
-        console.log('[PhotoCapture] Analysis completed, result:', analysis);
-        onAnalysisComplete(analysis);
-        console.log('[PhotoCapture] Analysis complete callback called');
-      } catch (error) {
-        console.error('[PhotoCapture] AI analysis failed:', error);
-        // Silently fail - don't block user from continuing
+      // Clean up temp image URL
+      if (tempImageUrl) {
+        URL.revokeObjectURL(tempImageUrl);
+        setTempImageUrl(null);
       }
-    } else {
-      console.log('[PhotoCapture] No analysis callbacks provided, skipping analysis');
+
+      // Close editor
+      setShowEditor(false);
+
+      // Call callback with compressed blob
+      onPhotoCapture(compressedBlob);
+
+      // Trigger AI analysis if callbacks are provided
+      if (onAnalysisComplete) {
+        console.log('[PhotoCapture] Analysis callbacks provided, starting analysis...');
+        try {
+          onAnalysisStart?.();
+          console.log('[PhotoCapture] Analysis start callback called');
+          const analysis = await analyzeClothingImage(compressedBlob);
+          console.log('[PhotoCapture] Analysis completed, result:', analysis);
+          onAnalysisComplete(analysis);
+          console.log('[PhotoCapture] Analysis complete callback called');
+        } catch (error) {
+          console.error('[PhotoCapture] AI analysis failed:', error);
+          // Silently fail - don't block user from continuing
+        }
+      } else {
+        console.log('[PhotoCapture] No analysis callbacks provided, skipping analysis');
+      }
+    } catch (error) {
+      console.error('[PhotoCapture] Image compression failed:', error);
+      // Fallback to uncompressed if compression fails
+      alert('Failed to compress image. Using original image.');
+      
+      const previewUrl = URL.createObjectURL(croppedBlob);
+      setPreview(previewUrl);
+      setFinalImageBlob(croppedBlob);
+      onPhotoCapture(croppedBlob);
+      
+      if (tempImageUrl) {
+        URL.revokeObjectURL(tempImageUrl);
+        setTempImageUrl(null);
+      }
+      setShowEditor(false);
     }
   };
 
