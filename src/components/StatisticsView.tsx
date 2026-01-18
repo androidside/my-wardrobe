@@ -63,43 +63,32 @@ export function StatisticsView({
   const [wardrobeItemsCache, setWardrobeItemsCache] = useState<Record<string, ClothingItem[]>>({});
   const [loading, setLoading] = useState(false);
 
-  // Initialize with current wardrobe
-  useEffect(() => {
-    if (currentWardrobeId && !wardrobeItemsCache[currentWardrobeId]) {
-      setWardrobeItemsCache(prev => ({
-        ...prev,
-        [currentWardrobeId]: currentWardrobeItems,
-      }));
-    }
-  }, [currentWardrobeId, currentWardrobeItems, wardrobeItemsCache]);
-
   // Fetch items when wardrobe selection changes
   useEffect(() => {
     const loadItems = async () => {
       // If "all" is selected, fetch all items
       if (selectedWardrobeId === 'all') {
-        if (!wardrobeItemsCache['all']) {
-          setLoading(true);
-          try {
-            const items = await getAllItemsForUser(userId, wardrobes);
-            setWardrobeItemsCache(prev => ({ ...prev, all: items }));
-          } catch (error) {
-            console.error('Error loading all items:', error);
-          } finally {
-            setLoading(false);
-          }
-        }
-      } 
-      // If specific wardrobe is selected and not in cache
-      else if (selectedWardrobeId && !wardrobeItemsCache[selectedWardrobeId]) {
-        // Skip if it's the current wardrobe (already loaded)
-        if (selectedWardrobeId === currentWardrobeId) {
-          return;
-        }
-        
+        // Always refresh "all" to ensure it's up to date
         setLoading(true);
         try {
+          console.log('[Stats] Fetching all items from wardrobes:', wardrobes.map(w => w.name));
+          const items = await getAllItemsForUser(userId, wardrobes);
+          console.log('[Stats] Fetched total items for all wardrobes:', items.length);
+          setWardrobeItemsCache(prev => ({ ...prev, all: items }));
+        } catch (error) {
+          console.error('Error loading all items:', error);
+        } finally {
+          setLoading(false);
+        }
+      } 
+      // If specific wardrobe is selected
+      else if (selectedWardrobeId) {
+        // Always refresh to get latest data
+        setLoading(true);
+        try {
+          console.log('[Stats] Fetching items for wardrobe:', selectedWardrobeId);
           const items = await getClothingItems(userId, selectedWardrobeId);
+          console.log('[Stats] Fetched items count:', items.length);
           setWardrobeItemsCache(prev => ({ ...prev, [selectedWardrobeId]: items }));
         } catch (error) {
           console.error('Error loading wardrobe items:', error);
@@ -110,7 +99,7 @@ export function StatisticsView({
     };
 
     loadItems();
-  }, [selectedWardrobeId, userId, wardrobes, wardrobeItemsCache, currentWardrobeId]);
+  }, [selectedWardrobeId, userId, wardrobes]);
 
   // Determine which items to display based on selection
   const displayItems = wardrobeItemsCache[selectedWardrobeId] || [];
