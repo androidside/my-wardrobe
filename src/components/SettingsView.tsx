@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ArrowLeft, User, Lock, Shield, FolderOpen, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PersonalInfoDialog } from './PersonalInfoDialog';
+import { ChangePasswordDialog } from './ChangePasswordDialog';
 
 interface SettingsViewProps {
   onBack: () => void;
@@ -10,7 +11,7 @@ interface SettingsViewProps {
 
 export function SettingsView({ onBack, onNavigateToWardrobes }: SettingsViewProps) {
   const [showPersonalInfoDialog, setShowPersonalInfoDialog] = useState(false);
-  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [showChangePasswordDialog, setShowChangePasswordDialog] = useState(false);
   const [showPrivacyDialog, setShowPrivacyDialog] = useState(false);
 
   const settingsSections = [
@@ -28,7 +29,7 @@ export function SettingsView({ onBack, onNavigateToWardrobes }: SettingsViewProp
       icon: Lock,
       title: 'Account & Security',
       description: 'Change your password',
-      onClick: () => setShowPasswordDialog(true),
+      onClick: () => setShowChangePasswordDialog(true),
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
     },
@@ -110,16 +111,11 @@ export function SettingsView({ onBack, onNavigateToWardrobes }: SettingsViewProp
         />
       )}
 
-      {/* Password Dialog - Placeholder for now */}
-      {showPasswordDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h2 className="text-xl font-bold mb-4">Change Password</h2>
-            <p className="text-gray-600 mb-4">Password change functionality coming soon...</p>
-            <Button onClick={() => setShowPasswordDialog(false)}>Close</Button>
-          </div>
-        </div>
-      )}
+      {/* Change Password Dialog */}
+      <ChangePasswordDialog
+        open={showChangePasswordDialog}
+        onOpenChange={setShowChangePasswordDialog}
+      />
 
       {/* Privacy Dialog - Placeholder for now */}
       {showPrivacyDialog && (

@@ -6,6 +6,7 @@ import {
   updatePassword,
   reauthenticateWithCredential,
   EmailAuthProvider,
+  sendPasswordResetEmail,
   AuthError,
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
@@ -115,6 +116,24 @@ export const updateUserPassword = async (currentPassword: string, newPassword: s
       throw new Error('New password is too weak. Use at least 6 characters.');
     } else if (firebaseError.code === 'auth/requires-recent-login') {
       throw new Error('Please log out and log back in before changing your password.');
+    }
+    
+    throw new Error(getFirebaseErrorMessage(firebaseError));
+  }
+};
+
+export const sendPasswordReset = async (email: string): Promise<void> => {
+  try {
+    await sendPasswordResetEmail(auth, email);
+  } catch (error) {
+    const firebaseError = error as AuthError;
+    
+    if (firebaseError.code === 'auth/user-not-found') {
+      throw new Error('No account found with this email.');
+    } else if (firebaseError.code === 'auth/invalid-email') {
+      throw new Error('Invalid email address.');
+    } else if (firebaseError.code === 'auth/too-many-requests') {
+      throw new Error('Too many requests. Please try again later.');
     }
     
     throw new Error(getFirebaseErrorMessage(firebaseError));

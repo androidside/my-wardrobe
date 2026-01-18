@@ -11,6 +11,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
+import { sendPasswordReset } from '@/services/auth';
 import { Mail } from 'lucide-react';
 
 interface LoginPageProps {
@@ -98,14 +99,9 @@ export function LoginPage({ onSwitchToSignup, onLogin }: LoginPageProps) {
     setResetError(null);
 
     try {
-      // TODO: Implement Firebase password reset email
-      // await sendPasswordResetEmail(auth, resetEmail);
+      // Send password reset email
+      await sendPasswordReset(resetEmail);
       
-      // Placeholder - simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // For now, just show success message
-      console.log('Password reset email would be sent to:', resetEmail);
       setResetEmailSent(true);
     } catch (error) {
       setResetError(error instanceof Error ? error.message : 'Failed to send reset email');
