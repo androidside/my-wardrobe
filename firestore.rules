@@ -1,0 +1,120 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if two users are friends
+    function areFriends(userId1, userId2) {
+      return exists(/databases/$(database)/documents/users/$(userId1)/friends/$(userId2));
+    }
+    
+    match /users/{userId} {
+      // Users can write their own document
+      allow write: if request.auth != null && request.auth.uid == userId;
+      
+      // Users can read their own document (full access)
+      allow get: if request.auth != null && request.auth.uid == userId;
+      
+      // Authenticated users can read OTHER users' documents (for public profile data)
+      // This is needed for social features (friend search, viewing profiles)
+      allow get: if request.auth != null;
+      
+      // Allow username queries for availability checks (including during signup)
+      // This is safe because usernames are meant to be public for social features
+      allow list: if true;
+      
+      // Legacy wardrobe collection (singular)
+      match /wardrobe/{itemId} {
+        // Users can read/write their own items
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+        
+        // Friends can read items in shareable wardrobes
+        allow read: if request.auth != null 
+          && areFriends(userId, request.auth.uid)
+          && exists(/databases/$(database)/documents/users/$(userId)/wardrobes/$(resource.data.wardrobeId))
+          && get(/databases/$(database)/documents/users/$(userId)/wardrobes/$(resource.data.wardrobeId)).data.isShareable == true;
+      }
+      
+      // Wardrobes collection
+      match /wardrobes/{wardrobeId} {
+        // Users can read/write their own wardrobes
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+        
+        // Friends can read shareable wardrobes
+        allow get: if request.auth != null 
+          && areFriends(userId, request.auth.uid)
+          && resource.data.isShareable == true;
+        
+        // Friends can list shareable wardrobes
+        allow list: if request.auth != null 
+          && areFriends(userId, request.auth.uid);
+        
+        // Clothing items within wardrobes
+        match /items/{itemId} {
+          // Users can read/write their own items
+          allow read, write: if request.auth != null && request.auth.uid == userId;
+          
+          // Friends can read items in shareable wardrobes
+          allow get: if request.auth != null 
+            && areFriends(userId, request.auth.uid)
+            && get(/databases/$(database)/documents/users/$(userId)/wardrobes/$(wardrobeId)).data.isShareable == true;
+          
+          // Friends can list items in shareable wardrobes
+          allow list: if request.auth != null 
+            && areFriends(userId, request.auth.uid)
+            && get(/databases/$(database)/documents/users/$(userId)/wardrobes/$(wardrobeId)).data.isShareable == true;
+        }
+      }
+      
+      // Friends collection
+      match /friends/{friendId} {
+        // Users can read their own friends
+        allow read: if request.auth != null && request.auth.uid == userId;
+        
+        // Friends can read each other's friends lists (for social features)
+        allow read: if request.auth != null && areFriends(userId, request.auth.uid);
+        
+        // Users can write to their own friends collection
+        allow write: if request.auth != null && request.auth.uid == userId;
+        
+        // Users can write when adding themselves as a friend (for accepting requests)
+        // This allows user B to write to /users/A/friends/B when accepting a request
+        allow write: if request.auth != null && request.auth.uid == friendId;
+        
+        // Authenticated users can check if friendship exists (needed for duplicate checks)
+        allow get: if request.auth != null;
+      }
+      
+      // Friend requests collection (incoming requests)
+      match /friendRequests/{requestId} {
+        // Authenticated users can read friend requests (needed for duplicate checking)
+        // This is safe because friend requests only contain user IDs and status
+        allow read: if request.auth != null;
+        
+        // Users can create requests sent TO them by others
+        allow create: if request.auth != null 
+          && request.auth.uid == request.resource.data.fromUserId;
+        
+        // Senders can update their own requests (to resend after rejection)
+        allow update: if request.auth != null 
+          && request.auth.uid == request.resource.data.fromUserId;
+        
+        // Recipients can update requests sent to them (accept/reject)
+        allow update: if request.auth != null 
+          && request.auth.uid == resource.data.toUserId;
+        
+        // Users can delete their own received requests
+        allow delete: if request.auth != null 
+          && request.auth.uid == userId;
+      }
+      
+      // Sent requests collection (outgoing requests)
+      match /sentRequests/{requestId} {
+        // Users can read/write their own sent requests
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+        
+        // Recipients can update/delete sent requests (for accepting/rejecting)
+        allow update, delete: if request.auth != null 
+          && request.auth.uid == resource.data.toUserId;
+      }
+    }
+  }
+}
