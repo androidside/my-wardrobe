@@ -257,12 +257,23 @@ function CategorySection({
             cx="50%"
             cy="50%"
             labelLine={false}
-            label={({ category, percentage }) => `${category}: ${percentage.toFixed(0)}%`}
+            label={({ category, percentage, cx, cy, midAngle, innerRadius, outerRadius }) => {
+              // Hide labels on very small screens
+              if (window.innerWidth < 640) {
+                return null;
+              }
+              // Show abbreviated labels on mobile
+              if (window.innerWidth < 768) {
+                return `${percentage.toFixed(0)}%`;
+              }
+              // Full labels on desktop
+              return `${category}: ${percentage.toFixed(0)}%`;
+            }}
             outerRadius={100}
             fill="#8884d8"
             dataKey="count"
             onClick={(entry) => onCategoryClick(entry)}
-            style={{ cursor: 'pointer' }}
+            style={{ cursor: 'pointer', fontSize: '12px' }}
           >
             {data.map((entry, index) => (
               <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -295,6 +306,17 @@ function ColorSection({
   data: ColorStat[]; 
   onColorClick: (data: ColorStat) => void;
 }) {
+  if (!data || data.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Color Palette</h2>
+        <p className="text-center text-gray-500 py-8">
+          No color data available. Add items to your wardrobe to see color distribution.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <h2 className="text-lg font-semibold text-gray-900 mb-4">Color Palette</h2>
@@ -371,6 +393,9 @@ function StyleSection({
   formalityData: FormalityDistribution[]; 
   tagData: TagStat[];
 }) {
+  // Check if there's any formality data
+  const hasFormalityData = formalityData.some(item => item.count > 0);
+
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <h2 className="text-lg font-semibold text-gray-900 mb-4">Style Analysis</h2>
@@ -378,20 +403,26 @@ function StyleSection({
       {/* Formality Chart */}
       <div className="mb-6">
         <h3 className="text-sm font-medium text-gray-700 mb-3">Formality Distribution</h3>
-        <ResponsiveContainer width="100%" height={250}>
-          <BarChart data={formalityData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="level" />
-            <YAxis />
-            <Tooltip formatter={(value) => `${value} items`} />
-            <Legend />
-            <Bar dataKey="count" name="Items">
-              {formalityData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.fill} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+        {hasFormalityData ? (
+          <ResponsiveContainer width="100%" height={250}>
+            <BarChart data={formalityData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="level" />
+              <YAxis />
+              <Tooltip formatter={(value) => `${value} items`} />
+              <Legend />
+              <Bar dataKey="count" name="Items">
+                {formalityData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.fill} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <p className="text-center text-gray-500 py-8">
+            No formality data available. Make sure your items have formality levels set.
+          </p>
+        )}
       </div>
       
       {/* Tags */}
