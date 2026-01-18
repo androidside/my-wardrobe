@@ -106,7 +106,7 @@ function AppContent() {
     }
   };
 
-  const handleNavigate = (page: 'wardrobe' | 'fitting-room' | 'profile') => {
+  const handleNavigate = (page: 'wardrobe' | 'fitting-room' | 'stats' | 'profile') => {
     setActivePage(page);
     // Reset profile view to 'own' when navigating to profile page
     if (page === 'profile') {

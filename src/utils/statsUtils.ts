@@ -1,4 +1,4 @@
-import { ClothingItem, ClothingColor, ClothingCategory } from '@/types/clothing';
+import { ClothingItem, ClothingColor } from '@/types/clothing';
 import { Wardrobe } from '@/types/wardrobe';
 import { wardrobeStorageService } from '@/services/wardrobeStorage';
 

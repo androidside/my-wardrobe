@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ClothingItem, ClothingCategory, ClothingColor } from '@/types/clothing';
 import { Wardrobe } from '@/types/wardrobe';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   PieChart,
@@ -48,9 +47,7 @@ interface StatisticsViewProps {
 }
 
 export function StatisticsView({
-  currentWardrobeItems,
   currentWardrobeId,
-  currentWardrobeName,
   wardrobes,
   userId,
   onFilterCategory,
@@ -103,11 +100,6 @@ export function StatisticsView({
 
   // Determine which items to display based on selection
   const displayItems = wardrobeItemsCache[selectedWardrobeId] || [];
-  
-  // Get selected wardrobe name for display
-  const selectedWardrobeName = selectedWardrobeId === 'all' 
-    ? 'All Wardrobes' 
-    : wardrobes.find(w => w.id === selectedWardrobeId)?.name || 'Select Wardrobe';
 
   // Calculate all statistics
   const overviewStats = calculateOverviewStats(displayItems);
@@ -288,11 +280,12 @@ function CategorySection({
       <ResponsiveContainer width="100%" height={300}>
         <PieChart>
           <Pie
-            data={data}
+            data={data as any}
             cx="50%"
             cy="50%"
             labelLine={false}
-            label={({ category, percentage, cx, cy, midAngle, innerRadius, outerRadius }) => {
+            label={(props: any) => {
+              const { category, percentage } = props;
               // Hide labels on very small screens
               if (window.innerWidth < 640) {
                 return null;
@@ -370,7 +363,7 @@ function ColorSection({
           />
           <Bar 
             dataKey="count" 
-            onClick={(entry) => onColorClick(entry)}
+            onClick={(entry: any) => onColorClick(entry.payload)}
             style={{ cursor: 'pointer' }}
             radius={[4, 4, 0, 0]}
           >

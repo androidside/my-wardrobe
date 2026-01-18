@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { useWardrobeContext } from '@/contexts/WardrobeContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
