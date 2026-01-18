@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { ClothingCard } from './ClothingCard';
 import { ClothingItem, ClothingCategory, CLOTHING_TYPES_BY_CATEGORY, getCategoryForType } from '@/types/clothing';
 import { wardrobeStorageService } from '@/services/wardrobeStorage';
@@ -126,24 +128,45 @@ export function WardrobeGallery({ items, allItems, selectedType, selectedCategor
   // Show empty state
   if (allItems.length === 0) {
     return (
-      <div className="text-center py-16">
-        <div className="text-6xl mb-4">👕</div>
-        <h3 className="text-xl font-semibold text-gray-700 mb-2">Your wardrobe is empty</h3>
-        <p className="text-gray-500">Add your first clothing item to get started!</p>
+      <div className="max-w-2xl mx-auto px-4 py-12">
+        <div className="bg-white rounded-lg shadow p-8 text-center">
+          <div className="text-6xl mb-4">👕</div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">Your wardrobe is empty</h3>
+          <p className="text-gray-600">Add your first clothing item to get started!</p>
+        </div>
       </div>
     );
   }
 
   // Show category view when no type is selected and no category is selected
   if (selectedType === null && selectedCategory === null) {
+    // Calculate stats
+    const totalItems = allItems.length;
+    const totalCategories = categories.length;
+    const totalTypes = categories.reduce((sum, cat) => 
+      sum + Object.keys(itemsByCategory[cat]).length, 0
+    );
+
     return (
-      <div className="h-[calc(100vh-8rem)] min-h-[500px] flex items-start justify-center px-4 sm:px-6 lg:px-8 pt-0 pb-6">
-        <div 
-          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 w-full max-w-5xl mx-auto gap-x-3 sm:gap-x-4 gap-y-2 sm:gap-y-3"
-          style={{
-            alignContent: 'start',
-          }}
-        >
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Stats Bar */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="bg-white rounded-lg shadow p-4 text-center">
+            <div className="text-3xl font-bold text-indigo-600">{totalItems}</div>
+            <div className="text-sm text-gray-600">Total Items</div>
+          </div>
+          <div className="bg-white rounded-lg shadow p-4 text-center">
+            <div className="text-3xl font-bold text-indigo-600">{totalCategories}</div>
+            <div className="text-sm text-gray-600">Categories</div>
+          </div>
+          <div className="bg-white rounded-lg shadow p-4 text-center">
+            <div className="text-3xl font-bold text-indigo-600">{totalTypes}</div>
+            <div className="text-sm text-gray-600">Types</div>
+          </div>
+        </div>
+
+        {/* Category Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {categories.map((category) => {
             // Get all items in this category
             const categoryItems = Object.values(itemsByCategory[category]).flat();
@@ -157,7 +180,7 @@ export function WardrobeGallery({ items, allItems, selectedType, selectedCategor
               <button
                 key={category}
                 onClick={() => onCategorySelect(category)}
-                className="group relative bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 overflow-hidden border-2 border-gray-200 hover:border-indigo-400 transform hover:-translate-y-1 flex flex-col aspect-square"
+                className="group relative bg-white rounded-lg shadow hover:shadow-md transition-shadow duration-200 overflow-hidden border border-gray-100 hover:border-indigo-300 flex flex-col aspect-square"
               >
                 <div className="flex-1 relative bg-white overflow-hidden flex items-center justify-center">
                   <img
@@ -200,23 +223,20 @@ export function WardrobeGallery({ items, allItems, selectedType, selectedCategor
     const categoryTypes = Object.keys(itemsByCategory[selectedCategory]).sort();
     
     return (
-      <div className="h-[calc(100vh-8rem)] min-h-[500px] flex flex-col space-y-4 px-4 sm:px-6 lg:px-8 pt-0 pb-6">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Back button */}
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => onCategorySelect(null)}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-4 flex-shrink-0"
+          className="mb-6"
         >
-          <span className="text-xl">←</span>
-          <span className="font-medium">Back to Categories</span>
-        </button>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Categories
+        </Button>
 
-        
-        <div 
-          className="flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 w-full max-w-5xl mx-auto gap-x-3 sm:gap-x-4 gap-y-2 sm:gap-y-3"
-          style={{
-            alignContent: 'start',
-          }}
-        >
+        {/* Types Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {categoryTypes.map((type) => {
             const typeItems = itemsByCategory[selectedCategory][type];
             
@@ -224,7 +244,7 @@ export function WardrobeGallery({ items, allItems, selectedType, selectedCategor
               <button
                 key={type}
                 onClick={() => onTypeSelect(type)}
-                className="group relative bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 overflow-hidden border-2 border-gray-200 hover:border-indigo-400 transform hover:-translate-y-1 flex flex-col aspect-square"
+                className="group relative bg-white rounded-lg shadow hover:shadow-md transition-shadow duration-200 overflow-hidden border border-gray-100 hover:border-indigo-300 flex flex-col aspect-square"
               >
                 <div className="flex-1 relative bg-white overflow-hidden flex items-center justify-center">
                   <img
@@ -276,22 +296,26 @@ export function WardrobeGallery({ items, allItems, selectedType, selectedCategor
   };
   
   return (
-    <div className="space-y-4">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       {/* Back button - goes back to types view within the category */}
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={handleBackFromItems}
-        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-4"
+        className="mb-6"
       >
-        <span className="text-xl">←</span>
-        <span className="font-medium">Back to Types</span>
-      </button>
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        Back to Types
+      </Button>
 
       {/* Items grid */}
       {items.length === 0 ? (
-        <div className="text-center py-16">
-          <div className="text-6xl mb-4">👕</div>
-          <h3 className="text-xl font-semibold text-gray-700 mb-2">No items found</h3>
-          <p className="text-gray-500">Try adjusting your filters</p>
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white rounded-lg shadow p-8 text-center">
+            <div className="text-6xl mb-4">👕</div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No items found</h3>
+            <p className="text-gray-600">Try adjusting your filters</p>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 2xl:grid-cols-9 gap-1.5 sm:gap-2">
