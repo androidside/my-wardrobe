@@ -88,6 +88,10 @@ export function StatisticsView({
   const formalityDistribution = calculateFormalityDistribution(displayItems);
   const tagStats = calculateTagStats(displayItems);
 
+  // Debug logging
+  console.log('Stats - displayItems count:', displayItems.length);
+  console.log('Stats - colorStats:', colorStats);
+
   // Handle chart interactions
   const handleCategoryClick = (data: CategoryDistribution) => {
     if (onFilterCategory) {
@@ -283,14 +287,17 @@ function CategorySection({
         </PieChart>
       </ResponsiveContainer>
       
+      {/* Legend with percentages for all screens */}
       <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-2">
         {data.map((item) => (
           <div key={item.category} className="flex items-center gap-2 text-sm">
             <div 
-              className="w-3 h-3 rounded-full" 
+              className="w-3 h-3 rounded-full flex-shrink-0" 
               style={{ backgroundColor: item.fill }}
             />
-            <span className="text-gray-700">{item.category}: {item.count}</span>
+            <span className="text-gray-700">
+              {item.category}: {item.count} ({item.percentage.toFixed(0)}%)
+            </span>
           </div>
         ))}
       </div>
@@ -322,15 +329,19 @@ function ColorSection({
       <h2 className="text-lg font-semibold text-gray-900 mb-4">Color Palette</h2>
       
       <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={data} layout="horizontal">
+        <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis type="number" />
-          <YAxis dataKey="color" type="category" width={100} />
-          <Tooltip formatter={(value) => `${value} items`} />
+          <XAxis dataKey="color" />
+          <YAxis />
+          <Tooltip 
+            formatter={(value) => `${value} items`}
+            labelFormatter={(label) => `Color: ${label}`}
+          />
           <Bar 
             dataKey="count" 
             onClick={(entry) => onColorClick(entry)}
             style={{ cursor: 'pointer' }}
+            radius={[4, 4, 0, 0]}
           >
             {data.map((entry, index) => (
               <Cell 
