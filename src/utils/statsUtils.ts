@@ -1,6 +1,6 @@
 import { ClothingItem, ClothingColor, ClothingCategory } from '@/types/clothing';
 import { Wardrobe } from '@/types/wardrobe';
-import { getClothingItems } from '@/services/firestore';
+import { wardrobeStorageService } from '@/services/wardrobeStorage';
 
 // Statistics Interfaces
 export interface OverviewStats {
@@ -243,10 +243,12 @@ export async function getAllItemsForUser(
 ): Promise<ClothingItem[]> {
   try {
     const allItemsPromises = wardrobes.map(wardrobe =>
-      getClothingItems(userId, wardrobe.id)
+      wardrobeStorageService.getAllItems(userId, wardrobe.id)
     );
     const itemsArrays = await Promise.all(allItemsPromises);
-    return itemsArrays.flat();
+    const allItems = itemsArrays.flat();
+    console.log(`[getAllItemsForUser] Fetched ${allItems.length} total items across ${wardrobes.length} wardrobes (after migration)`);
+    return allItems;
   } catch (error) {
     console.error('Error fetching all items for user:', error);
     return [];

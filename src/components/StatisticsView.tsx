@@ -33,7 +33,7 @@ import {
   type TagStat,
 } from '@/utils/statsUtils';
 import { TrendingUp, DollarSign, ShoppingBag, Tag } from 'lucide-react';
-import { getClothingItems } from '@/services/firestore';
+import { wardrobeStorageService } from '@/services/wardrobeStorage';
 
 interface StatisticsViewProps {
   currentWardrobeItems: ClothingItem[];
@@ -87,8 +87,8 @@ export function StatisticsView({
         setLoading(true);
         try {
           console.log('[Stats] Fetching items for wardrobe:', selectedWardrobeId);
-          const items = await getClothingItems(userId, selectedWardrobeId);
-          console.log('[Stats] Fetched items count:', items.length);
+          const items = await wardrobeStorageService.getAllItems(userId, selectedWardrobeId);
+          console.log('[Stats] Fetched items count (after migration):', items.length);
           setWardrobeItemsCache(prev => ({ ...prev, [selectedWardrobeId]: items }));
         } catch (error) {
           console.error('Error loading wardrobe items:', error);
