@@ -235,11 +235,18 @@ export const getClothingItems = async (userId: string, wardrobeId?: string): Pro
     }
     
     const querySnapshot = await getDocs(q);
-
-    return querySnapshot.docs.map((doc) => ({
+    const items = querySnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     } as ClothingItem));
+    
+    console.log(`[getClothingItems] Fetched ${items.length} items for wardrobeId: ${wardrobeId || 'all'}`);
+    if (items.length > 0) {
+      const sampleItems = items.slice(0, 3);
+      console.log('[getClothingItems] Sample items wardrobeId values:', sampleItems.map(i => ({ id: i.id, wardrobeId: i.wardrobeId, category: i.category })));
+    }
+
+    return items;
   } catch (error) {
     const firestoreError = error as FirestoreError;
     throw new Error(getFirestoreErrorMessage(firestoreError));
