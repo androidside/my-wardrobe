@@ -4,7 +4,10 @@ import { LoginPage } from './components/LoginPage';
 import { SignupPage } from './components/SignupPage';
 import { AddClothingForm } from './components/AddClothingForm';
 import { WardrobeGallery } from './components/WardrobeGallery';
-import { MyProfile } from './components/MyProfile';
+import { UserProfileView } from './components/UserProfileView';
+import { FriendsListView } from './components/FriendsListView';
+import { SettingsView } from './components/SettingsView';
+import { FriendWardrobeView } from './components/FriendWardrobeView';
 import { ClothingDetailsDialog } from './components/ClothingDetailsDialog';
 import { EditClothingDialog } from './components/EditClothingDialog';
 import { BottomNavigation } from './components/BottomNavigation';
@@ -54,6 +57,14 @@ function AppContent() {
   const [filterColor, setFilterColor] = useState<string | 'All'>('All');
   const [migrationDone, setMigrationDone] = useState(false);
 
+  // Profile view routing
+  type ProfileView = 'own' | 'friend' | 'friends-list' | 'settings' | 'friend-wardrobe';
+  const [profileView, setProfileView] = useState<ProfileView>('own');
+  const [viewingFriendId, setViewingFriendId] = useState<string | null>(null);
+  const [viewingFriendUsername, setViewingFriendUsername] = useState<string | null>(null);
+  const [viewingFriendWardrobeId, setViewingFriendWardrobeId] = useState<string | null>(null);
+  const [viewingFriendWardrobeName, setViewingFriendWardrobeName] = useState<string | null>(null);
+
   // Auth handlers
   const handleLogin = async (credentials: LoginCredentials) => {
     try {
@@ -95,6 +106,14 @@ function AppContent() {
 
   const handleNavigate = (page: 'wardrobe' | 'fitting-room' | 'profile') => {
     setActivePage(page);
+    // Reset profile view to 'own' when navigating to profile page
+    if (page === 'profile') {
+      setProfileView('own');
+      setViewingFriendId(null);
+      setViewingFriendUsername(null);
+      setViewingFriendWardrobeId(null);
+      setViewingFriendWardrobeName(null);
+    }
   };
 
 
@@ -189,42 +208,40 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header - Scrolls away */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
-          {activePage === 'profile' ? (
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">👤 My Profile</h1>
-              <p className="text-sm text-gray-600 mt-1">Manage your personal information</p>
-            </div>
-          ) : activePage === 'fitting-room' ? (
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">🚪 My Fitting Room</h1>
-            </div>
-          ) : (
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1">
-                <WardrobeSelector onWardrobeChange={handleWardrobeChange} />
+      {/* Header - Hide on profile page since each profile view has its own header */}
+      {activePage !== 'profile' && (
+        <header className="bg-white shadow">
+          <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
+            {activePage === 'fitting-room' ? (
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">🚪 My Fitting Room</h1>
               </div>
-              {selectedCategory && (
-                <div className="text-right">
-                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900">{selectedCategory}</h2>
+            ) : (
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <WardrobeSelector onWardrobeChange={handleWardrobeChange} />
                 </div>
-              )}
-              {!selectedCategory && (selectedType !== null || filterBrand !== 'All' || filterColor !== 'All') && (
-                <div className="text-right">
-                  <p className="text-xs text-gray-500">
-                    {selectedType !== null && <span>{selectedType}</span>}
-                    {selectedType !== null && filterBrand !== 'All' && <span> • </span>}
-                    {filterBrand !== 'All' && <span>{filterBrand}</span>}
-                    {filterBrand !== 'All' && filterColor !== 'All' && <span> • </span>}
-                    {filterColor !== 'All' && <span>{filterColor}</span>}
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </header>
+                {selectedCategory && (
+                  <div className="text-right">
+                    <h2 className="text-lg sm:text-xl font-semibold text-gray-900">{selectedCategory}</h2>
+                  </div>
+                )}
+                {!selectedCategory && (selectedType !== null || filterBrand !== 'All' || filterColor !== 'All') && (
+                  <div className="text-right">
+                    <p className="text-xs text-gray-500">
+                      {selectedType !== null && <span>{selectedType}</span>}
+                      {selectedType !== null && filterBrand !== 'All' && <span> • </span>}
+                      {filterBrand !== 'All' && <span>{filterBrand}</span>}
+                      {filterBrand !== 'All' && filterColor !== 'All' && <span> • </span>}
+                      {filterColor !== 'All' && <span>{filterColor}</span>}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </header>
+      )}
 
       {/* Floating Filter Bar - Sticks to top when scrolling - Only show when a type is selected */}
       {activePage === 'wardrobe' && selectedType !== null && (
@@ -285,7 +302,53 @@ function AppContent() {
             onView={(item) => setSelectedItem(item)}
           />
         ) : activePage === 'profile' ? (
-          <MyProfile />
+          <>
+            {profileView === 'own' && user && (
+              <UserProfileView
+                userId={user.uid}
+                isOwnProfile={true}
+                onNavigateToFriends={() => setProfileView('friends-list')}
+                onNavigateToSettings={() => setProfileView('settings')}
+              />
+            )}
+            {profileView === 'friends-list' && (
+              <FriendsListView
+                onViewFriend={(friendId, friendUsername) => {
+                  setViewingFriendId(friendId);
+                  setViewingFriendUsername(friendUsername);
+                  setProfileView('friend');
+                }}
+                onBack={() => setProfileView('own')}
+              />
+            )}
+            {profileView === 'friend' && viewingFriendId && viewingFriendUsername && user && (
+              <UserProfileView
+                userId={viewingFriendId}
+                isOwnProfile={false}
+                onViewFriendWardrobe={(wardrobeId, wardrobeName) => {
+                  setViewingFriendWardrobeId(wardrobeId);
+                  setViewingFriendWardrobeName(wardrobeName);
+                  setProfileView('friend-wardrobe');
+                }}
+                onRemoveFriend={async () => {
+                  const { unfollowUser } = await import('./services/social');
+                  await unfollowUser(user.uid, viewingFriendId);
+                  setProfileView('friends-list');
+                }}
+                onBack={() => setProfileView('friends-list')}
+              />
+            )}
+            {profileView === 'friend-wardrobe' && viewingFriendId && viewingFriendUsername && viewingFriendWardrobeId && viewingFriendWardrobeName && (
+              <FriendWardrobeView
+                friendId={viewingFriendId}
+                friendUsername={viewingFriendUsername}
+                onBack={() => setProfileView('friend')}
+              />
+            )}
+            {profileView === 'settings' && (
+              <SettingsView onBack={() => setProfileView('own')} />
+            )}
+          </>
         ) : activePage === 'fitting-room' ? (
           <FittingRoom items={items} />
         ) : null}
