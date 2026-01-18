@@ -41,11 +41,13 @@ const getFirestoreErrorMessage = (error: FirestoreError): string => {
 export const searchUsersByUsername = async (searchTerm: string): Promise<UserSearchResult[]> => {
   try {
     if (!searchTerm || searchTerm.trim().length < 2) {
+      console.log('[searchUsers] Search term too short or empty');
       return [];
     }
 
     const usersRef = collection(db, 'users');
     const searchLower = searchTerm.toLowerCase().trim();
+    console.log('[searchUsers] Searching for:', searchLower);
     
     // Query for usernames that match the search term (using usernameLower for case-insensitive search)
     const q = query(
@@ -55,19 +57,29 @@ export const searchUsersByUsername = async (searchTerm: string): Promise<UserSea
       limit(20)
     );
     
+    console.log('[searchUsers] Executing query...');
     const querySnapshot = await getDocs(q);
+    console.log('[searchUsers] Query returned', querySnapshot.docs.length, 'documents');
+    
     const results: UserSearchResult[] = [];
     
     for (const docSnap of querySnapshot.docs) {
+      const data = docSnap.data();
+      console.log('[searchUsers] Found document:', docSnap.id, 'with username:', data.username, 'usernameLower:', data.usernameLower);
+      
       const profile = await getPublicUserProfile(docSnap.id);
       if (profile && profile.username) {
+        console.log('[searchUsers] Adding to results:', profile.username);
         results.push(profile);
+      } else {
+        console.log('[searchUsers] Skipping (no username):', docSnap.id);
       }
     }
     
+    console.log('[searchUsers] Returning', results.length, 'results');
     return results;
   } catch (error) {
-    console.error('Error searching users:', error);
+    console.error('[searchUsers] Error searching users:', error);
     const firestoreError = error as FirestoreError;
     throw new Error(getFirestoreErrorMessage(firestoreError));
   }
