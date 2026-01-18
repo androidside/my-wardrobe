@@ -47,11 +47,11 @@ export const searchUsersByUsername = async (searchTerm: string): Promise<UserSea
     const usersRef = collection(db, 'users');
     const searchLower = searchTerm.toLowerCase().trim();
     
-    // Query for usernames that match the search term
+    // Query for usernames that match the search term (using usernameLower for case-insensitive search)
     const q = query(
       usersRef,
-      where('username', '>=', searchLower),
-      where('username', '<=', searchLower + '\uf8ff'),
+      where('usernameLower', '>=', searchLower),
+      where('usernameLower', '<=', searchLower + '\uf8ff'),
       limit(20)
     );
     

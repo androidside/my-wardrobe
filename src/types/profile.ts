@@ -8,6 +8,7 @@ export interface UserProfile {
   
   // Personal Information
   username?: string; // Unique username for social features
+  usernameLower?: string; // Lowercase version for case-insensitive search
   firstName?: string;
   lastName?: string;
   dateOfBirth?: string; // ISO date string (YYYY-MM-DD)

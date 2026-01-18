@@ -134,6 +134,11 @@ export const saveUserProfile = async (userId: string, profile: UserProfile, skip
       }
     });
     
+    // Add lowercase username for case-insensitive search
+    if (cleanedProfile.username) {
+      cleanedProfile.usernameLower = cleanedProfile.username.toLowerCase();
+    }
+    
     const userRef = doc(db, 'users', userId);
     await setDoc(userRef, cleanedProfile, { merge: true });
     console.log('Profile saved successfully');
@@ -157,7 +162,7 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
       const profileData = userSnap.data() as UserProfile;
       console.log('Profile loaded:', profileData);
       
-      // For existing users: ensure userId and default privacy settings exist
+      // For existing users: ensure userId, usernameLower, and default privacy settings exist
       let needsUpdate = false;
       const updates: Partial<UserProfile> = {};
       
@@ -168,6 +173,12 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
       
       if (!profileData.privacySettings) {
         updates.privacySettings = { allowDirectFollow: false };
+        needsUpdate = true;
+      }
+      
+      // Add usernameLower if username exists but usernameLower doesn't
+      if (profileData.username && !profileData.usernameLower) {
+        updates.usernameLower = profileData.username.toLowerCase();
         needsUpdate = true;
       }
       
