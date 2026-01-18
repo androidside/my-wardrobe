@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ArrowLeft, User, Lock, Shield, FolderOpen, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PersonalInfoDialog } from './PersonalInfoDialog';
+import { ManageWardrobesView } from './ManageWardrobesView';
 
 interface SettingsViewProps {
   onBack: () => void;
@@ -11,7 +12,7 @@ export function SettingsView({ onBack }: SettingsViewProps) {
   const [showPersonalInfoDialog, setShowPersonalInfoDialog] = useState(false);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [showPrivacyDialog, setShowPrivacyDialog] = useState(false);
-  const [showWardrobesDialog, setShowWardrobesDialog] = useState(false);
+  const [showWardrobesView, setShowWardrobesView] = useState(false);
 
   const settingsSections = [
     {
@@ -46,11 +47,16 @@ export function SettingsView({ onBack }: SettingsViewProps) {
       icon: FolderOpen,
       title: 'Manage Wardrobes',
       description: 'Create, edit, and delete your wardrobes',
-      onClick: () => setShowWardrobesDialog(true),
+      onClick: () => setShowWardrobesView(true),
       color: 'text-purple-600',
       bgColor: 'bg-purple-50',
     },
   ];
+
+  // If showing wardrobes view, render that instead
+  if (showWardrobesView) {
+    return <ManageWardrobesView onBack={() => setShowWardrobesView(false)} />;
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
@@ -132,16 +138,6 @@ export function SettingsView({ onBack }: SettingsViewProps) {
         </div>
       )}
 
-      {/* Wardrobes Dialog - Placeholder for now */}
-      {showWardrobesDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h2 className="text-xl font-bold mb-4">Manage Wardrobes</h2>
-            <p className="text-gray-600 mb-4">Wardrobe management functionality coming soon...</p>
-            <Button onClick={() => setShowWardrobesDialog(false)}>Close</Button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
