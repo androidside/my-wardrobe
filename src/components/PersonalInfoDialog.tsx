@@ -142,7 +142,11 @@ export function PersonalInfoDialog({ open, onOpenChange }: PersonalInfoDialogPro
         }
       }
 
-      await saveUserProfile(user.uid, profile);
+      // Ensure userId is set in profile
+      await saveUserProfile(user.uid, {
+        ...profile,
+        userId: user.uid,
+      });
       setSuccessMessage('Profile updated successfully!');
       setTimeout(() => {
         setSuccessMessage(null);

@@ -84,25 +84,26 @@ function AppContent() {
       
       // Save the profile data immediately after signup
       if (authUser && credentials.profile) {
-        try {
-          await saveUserProfile(authUser.uid, {
-            username: credentials.profile.username,
-            firstName: credentials.profile.firstName,
-            lastName: credentials.profile.lastName,
-            dateOfBirth: credentials.profile.dateOfBirth,
-            gender: credentials.profile.gender,
-            city: credentials.profile.city,
-            country: credentials.profile.country,
-          }, true); // Skip username check since we already validated it
-          console.log('Profile saved successfully during signup');
-        } catch (profileError) {
-          console.error('Error saving profile during signup:', profileError);
-          // Don't fail the signup if profile save fails, but log it
-        }
+        // Create initial profile with all required fields and defaults
+        await saveUserProfile(authUser.uid, {
+          userId: authUser.uid,
+          username: credentials.profile.username,
+          firstName: credentials.profile.firstName,
+          lastName: credentials.profile.lastName,
+          dateOfBirth: credentials.profile.dateOfBirth,
+          gender: credentials.profile.gender,
+          city: credentials.profile.city,
+          country: credentials.profile.country,
+          privacySettings: {
+            allowDirectFollow: false, // Default: require friend request approval
+          },
+        }, true); // Skip username check since we already validated it
+        console.log('Profile saved successfully during signup for user:', authUser.uid);
       }
     } catch (err) {
       // Error is handled by SignupPage component
       console.error('Signup failed:', err);
+      throw err; // Re-throw so SignupPage can handle the error
     }
   };
 

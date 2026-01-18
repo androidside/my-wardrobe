@@ -3,6 +3,9 @@ export type GeneralSize = 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'Other';
 export type Gender = 'Male' | 'Female' | 'Other';
 
 export interface UserProfile {
+  // User Identification
+  userId?: string; // Firebase Auth user ID
+  
   // Personal Information
   username?: string; // Unique username for social features
   firstName?: string;
