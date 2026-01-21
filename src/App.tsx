@@ -25,7 +25,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { WardrobeProvider, useWardrobeContext } from './contexts/WardrobeContext';
 import { signup as authSignup } from './services/auth';
 import { useWardrobe } from './hooks/useWardrobe';
-import { ClothingItem, ClothingColor, ClothingCategory } from './types/clothing';
+import { ClothingItem, ClothingColor, ClothingCategory, ClothingTag } from './types/clothing';
 import { LoginCredentials, SignupCredentials } from './types/auth';
 import { saveUserProfile, getClothingItems, updateClothingItem } from './services/firestore';
 import { FittingRoom } from './components/FittingRoom';
@@ -54,6 +54,9 @@ function AppContent() {
   const [selectedItem, setSelectedItem] = useState<ClothingItem | null>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null); // Selected type category
   const [selectedCategory, setSelectedCategory] = useState<ClothingCategory | null>(null); // Selected category
+  const [viewMode, setViewMode] = useState<'all-items' | 'brands' | 'tags' | null>(null); // New: view mode for overview navigation
+  const [selectedBrand, setSelectedBrand] = useState<string | null>(null); // New: selected brand for filtering
+  const [selectedTag, setSelectedTag] = useState<ClothingTag | null>(null); // New: selected tag for filtering
   const [migrationDone, setMigrationDone] = useState(false);
 
   // Profile view routing
@@ -157,9 +160,12 @@ function AppContent() {
 
   const handleWardrobeChange = (wardrobeId: string) => {
     console.log('[App] handleWardrobeChange called with:', wardrobeId);
-    // Reset selections when switching wardrobes
+    // Reset all selections when switching wardrobes
     setSelectedType(null);
     setSelectedCategory(null);
+    setViewMode(null);
+    setSelectedBrand(null);
+    setSelectedTag(null);
     // Force refresh items when wardrobe changes
     // The useEffect in useWardrobe should handle this, but let's also call it manually
     setTimeout(() => {
@@ -264,8 +270,14 @@ function AppContent() {
             allItems={items}
             selectedType={selectedType}
             selectedCategory={selectedCategory}
+            selectedBrand={selectedBrand}
+            selectedTag={selectedTag}
+            viewMode={viewMode}
             onTypeSelect={setSelectedType}
             onCategorySelect={setSelectedCategory}
+            onBrandSelect={setSelectedBrand}
+            onTagSelect={setSelectedTag}
+            onViewModeChange={setViewMode}
             onEdit={handleEdit}
             onDelete={deleteItem}
             onView={(item) => setSelectedItem(item)}
