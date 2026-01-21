@@ -334,13 +334,17 @@ export function WardrobeGallery({ items, allItems, selectedType, selectedCategor
     onTypeSelect(null);
   };
   
-  // Filter items based on search and color
+  // Filter items based on type, search, and color
   const filteredItems = items.filter(item => {
-    // Search filter (search in type, brand, color)
+    // First filter by selected type (most important!)
+    if (selectedType && item.type !== selectedType) {
+      return false;
+    }
+    
+    // Search filter (search in brand, color, tags)
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       const matchesSearch = 
-        item.type.toLowerCase().includes(query) ||
         item.brand.toLowerCase().includes(query) ||
         item.color.toLowerCase().includes(query) ||
         (item.tags && item.tags.some(tag => tag.toLowerCase().includes(query)));
