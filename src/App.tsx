@@ -15,7 +15,6 @@ import { EditClothingDialog } from './components/EditClothingDialog';
 import { BottomNavigation } from './components/BottomNavigation';
 import { WardrobeSelector } from './components/WardrobeSelector';
 import { Button } from './components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -55,8 +54,6 @@ function AppContent() {
   const [selectedItem, setSelectedItem] = useState<ClothingItem | null>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null); // Selected type category
   const [selectedCategory, setSelectedCategory] = useState<ClothingCategory | null>(null); // Selected category
-  const [filterBrand, setFilterBrand] = useState<string | 'All'>('All');
-  const [filterColor, setFilterColor] = useState<string | 'All'>('All');
   const [migrationDone, setMigrationDone] = useState(false);
 
   // Profile view routing
@@ -152,17 +149,7 @@ function AppContent() {
   }, [user, migrationDone, wardrobesLoading, currentWardrobeId, refreshItems]);
 
   // Compute available filter options from items
-  const brands = Array.from(new Set(items.map((i) => i.brand))).filter(Boolean).sort();
-  const colors = Array.from(new Set(items.map((i) => i.color))).filter(Boolean).sort() as ClothingColor[];
-
-  // Filter items - filter by selected type, brand, and color
-  const filteredItems = items.filter((it) => {
-    return (
-      (selectedType === null ? true : it.type === selectedType) &&
-      (filterBrand === 'All' ? true : it.brand === filterBrand) &&
-      (filterColor === 'All' ? true : it.color === filterColor)
-    );
-  });
+  // Note: Filtering is now handled within WardrobeGallery component
 
   const handleEdit = (item: ClothingItem) => {
     setEditingItem(item);
@@ -170,11 +157,9 @@ function AppContent() {
 
   const handleWardrobeChange = (wardrobeId: string) => {
     console.log('[App] handleWardrobeChange called with:', wardrobeId);
-    // Reset filters when switching wardrobes
+    // Reset selections when switching wardrobes
     setSelectedType(null);
     setSelectedCategory(null);
-    setFilterBrand('All');
-    setFilterColor('All');
     // Force refresh items when wardrobe changes
     // The useEffect in useWardrobe should handle this, but let's also call it manually
     setTimeout(() => {
@@ -211,23 +196,19 @@ function AppContent() {
   // Handlers for stats interactions
   const handleStatsFilterCategory = (category: ClothingCategory) => {
     setSelectedCategory(category);
-    setFilterBrand('All');
-    setFilterColor('All');
     setActivePage('wardrobe');
   };
 
-  const handleStatsFilterColor = (color: ClothingColor) => {
-    setFilterColor(color);
-    setFilterBrand('All');
+  const handleStatsFilterColor = (_color: ClothingColor) => {
     setSelectedCategory(null);
     setActivePage('wardrobe');
+    // Note: Color filtering is now handled within WardrobeGallery
   };
 
-  const handleStatsFilterBrand = (brand: string) => {
-    setFilterBrand(brand);
-    setFilterColor('All');
+  const handleStatsFilterBrand = (_brand: string) => {
     setSelectedCategory(null);
     setActivePage('wardrobe');
+    // Note: Brand filtering is now handled via search in WardrobeGallery
   };
 
   // Get current wardrobe name
@@ -255,15 +236,6 @@ function AppContent() {
                       Viewing: <span className="font-medium">{selectedCategory}</span>
                     </p>
                   )}
-                  {!selectedCategory && (selectedType !== null || filterBrand !== 'All' || filterColor !== 'All') && (
-                    <p className="text-xs text-gray-500">
-                      {selectedType !== null && <span>{selectedType}</span>}
-                      {selectedType !== null && filterBrand !== 'All' && <span> • </span>}
-                      {filterBrand !== 'All' && <span>{filterBrand}</span>}
-                      {filterBrand !== 'All' && filterColor !== 'All' && <span> • </span>}
-                      {filterColor !== 'All' && <span>{filterColor}</span>}
-                    </p>
-                  )}
                 </div>
                 
                 {/* Right side: Wardrobe selector */}
@@ -276,42 +248,6 @@ function AppContent() {
         </header>
       )}
 
-      {/* Floating Filter Bar - Sticks to top when scrolling - Only show when a type is selected */}
-      {activePage === 'wardrobe' && selectedType !== null && (
-        <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <Select value={filterBrand} onValueChange={(v) => setFilterBrand(v)}>
-                <SelectTrigger className="w-24 sm:w-40 h-8 sm:h-9 text-xs sm:text-sm">
-                  <SelectValue placeholder="Brand" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="All">All brands</SelectItem>
-                  {brands.map((b) => (
-                    <SelectItem key={b} value={b}>
-                      {b}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={filterColor} onValueChange={(v) => setFilterColor(v)}>
-                <SelectTrigger className="w-24 sm:w-36 h-8 sm:h-9 text-xs sm:text-sm">
-                  <SelectValue placeholder="Color" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="All">All colors</SelectItem>
-                  {colors.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Main Content */}
         <main className="max-w-7xl mx-auto px-4 pt-4 pb-24 sm:px-6 lg:px-8">
@@ -324,7 +260,7 @@ function AppContent() {
         {activePage === 'wardrobe' ? (
           <WardrobeGallery
             key={currentWardrobeId || 'no-wardrobe'}
-            items={filteredItems}
+            items={items}
             allItems={items}
             selectedType={selectedType}
             selectedCategory={selectedCategory}

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { ArrowLeft, Search, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { ClothingCard } from './ClothingCard';
-import { ClothingItem, ClothingCategory, CLOTHING_TYPES_BY_CATEGORY, getCategoryForType } from '@/types/clothing';
+import { ClothingItem, ClothingCategory, ClothingColor, CLOTHING_TYPES_BY_CATEGORY, getCategoryForType } from '@/types/clothing';
 import { wardrobeStorageService } from '@/services/wardrobeStorage';
 
 // Emoji mapping for clothing types (used as fallback)
@@ -58,6 +58,25 @@ const getTypeIconPath = (type: string): string => {
   return `/icons/clothing/${fileNameMap[type]}.png`;
 };
 
+// Color mapping for filter pills
+const COLOR_HEX_MAP: Record<ClothingColor, string> = {
+  'Black': '#000000',
+  'White': '#FFFFFF',
+  'Gray': '#808080',
+  'Navy': '#000080',
+  'Blue': '#0000FF',
+  'Red': '#FF0000',
+  'Green': '#008000',
+  'Yellow': '#FFFF00',
+  'Orange': '#FFA500',
+  'Pink': '#FFC0CB',
+  'Purple': '#800080',
+  'Brown': '#8B4513',
+  'Beige': '#F5F5DC',
+  'Multicolor': 'linear-gradient(135deg, #FF0000 0%, #FFFF00 25%, #00FF00 50%, #0000FF 75%, #FF00FF 100%)',
+  'Other': '#CCCCCC',
+};
+
 interface WardrobeGalleryProps {
   items: ClothingItem[];
   allItems: ClothingItem[]; // All items for category view
@@ -72,6 +91,8 @@ interface WardrobeGalleryProps {
 
 export function WardrobeGallery({ items, allItems, selectedType, selectedCategory, onTypeSelect, onCategorySelect, onEdit, onDelete, onView }: WardrobeGalleryProps) {
   const [imageUrls, setImageUrls] = useState<Record<string, string | null>>({});
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedColor, setSelectedColor] = useState<ClothingColor | null>(null);
   
   // When a type is selected, remember its category for navigation
   // This ensures we can go back to the types view when clicking back from items view
@@ -223,63 +244,73 @@ export function WardrobeGallery({ items, allItems, selectedType, selectedCategor
   // Show types within selected category
   if (selectedCategory !== null && selectedType === null) {
     const categoryTypes = Object.keys(itemsByCategory[selectedCategory]).sort();
+    const totalItems = categoryTypes.reduce((sum, type) => sum + itemsByCategory[selectedCategory][type].length, 0);
     
     return (
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Back button */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onCategorySelect(null)}
-          className="mb-6"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Categories
-        </Button>
+      <div className="pb-6">
+        {/* Sticky Header */}
+        <div className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-14">
+              <button
+                onClick={() => onCategorySelect(null)}
+                className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition-colors"
+              >
+                <ArrowLeft className="h-5 w-5" />
+                <span className="font-medium">{selectedCategory}</span>
+              </button>
+              <span className="text-sm text-gray-500">
+                {totalItems} {totalItems === 1 ? 'item' : 'items'}
+              </span>
+            </div>
+          </div>
+        </div>
 
         {/* Types Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {categoryTypes.map((type) => {
-            const typeItems = itemsByCategory[selectedCategory][type];
-            
-            return (
-              <button
-                key={type}
-                onClick={() => onTypeSelect(type)}
-                className="group bg-white rounded-lg shadow hover:shadow-md transition-shadow duration-200 overflow-hidden flex flex-col aspect-square"
-              >
-                {/* Icon area with subtle gradient background */}
-                <div className="flex-1 relative bg-gradient-to-br from-indigo-50 to-purple-50 overflow-hidden flex items-center justify-center">
-                  <img
-                    src={getTypeIconPath(type)}
-                    alt={type}
-                    className="w-full h-full object-contain p-5 group-hover:scale-105 transition-transform duration-200"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
-                      const emojiSpan = target.nextElementSibling as HTMLElement;
-                      if (emojiSpan) {
-                        emojiSpan.style.display = 'flex';
-                      }
-                    }}
-                  />
-                  <span 
-                    className="absolute inset-0 hidden items-center justify-center text-4xl"
-                    style={{ display: 'none' }}
-                  >
-                    {TYPE_EMOJIS[type] || '👕'}
-                  </span>
-                </div>
-                {/* Text area with border separator */}
-                <div className="p-3 text-center bg-white border-t border-gray-100">
-                  <h3 className="font-semibold text-gray-900 text-sm truncate">{type}</h3>
-                  <p className="text-xs text-gray-600 mt-1">
-                    {typeItems.length} {typeItems.length === 1 ? 'item' : 'items'}
-                  </p>
-                </div>
-              </button>
-            );
-          })}
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {categoryTypes.map((type) => {
+              const typeItems = itemsByCategory[selectedCategory][type];
+              
+              return (
+                <button
+                  key={type}
+                  onClick={() => onTypeSelect(type)}
+                  className="group bg-white rounded-lg shadow hover:shadow-md transition-shadow duration-200 overflow-hidden flex flex-col aspect-square"
+                >
+                  {/* Icon area with subtle gradient background */}
+                  <div className="flex-1 relative bg-gradient-to-br from-indigo-50 to-purple-50 overflow-hidden flex items-center justify-center">
+                    <img
+                      src={getTypeIconPath(type)}
+                      alt={type}
+                      className="w-full h-full object-contain p-5 group-hover:scale-105 transition-transform duration-200"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const emojiSpan = target.nextElementSibling as HTMLElement;
+                        if (emojiSpan) {
+                          emojiSpan.style.display = 'flex';
+                        }
+                      }}
+                    />
+                    <span 
+                      className="absolute inset-0 hidden items-center justify-center text-4xl"
+                      style={{ display: 'none' }}
+                    >
+                      {TYPE_EMOJIS[type] || '👕'}
+                    </span>
+                  </div>
+                  {/* Text area with border separator */}
+                  <div className="p-3 text-center bg-white border-t border-gray-100">
+                    <h3 className="font-semibold text-gray-900 text-sm truncate">{type}</h3>
+                    <p className="text-xs text-gray-600 mt-1">
+                      {typeItems.length} {typeItems.length === 1 ? 'item' : 'items'}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     );
@@ -290,6 +321,10 @@ export function WardrobeGallery({ items, allItems, selectedType, selectedCategor
   
   // Handle back navigation from items view to types view
   const handleBackFromItems = () => {
+    // Clear filters when going back
+    setSearchQuery('');
+    setSelectedColor(null);
+    
     // Ensure category is set before clearing the type
     // This will show the types view for that category
     if (selectedItemCategory) {
@@ -299,42 +334,147 @@ export function WardrobeGallery({ items, allItems, selectedType, selectedCategor
     onTypeSelect(null);
   };
   
+  // Filter items based on search and color
+  const filteredItems = items.filter(item => {
+    // Search filter (search in type, brand, color)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      const matchesSearch = 
+        item.type.toLowerCase().includes(query) ||
+        item.brand.toLowerCase().includes(query) ||
+        item.color.toLowerCase().includes(query) ||
+        (item.tags && item.tags.some(tag => tag.toLowerCase().includes(query)));
+      
+      if (!matchesSearch) return false;
+    }
+    
+    // Color filter
+    if (selectedColor && item.color !== selectedColor) {
+      return false;
+    }
+    
+    return true;
+  });
+  
+  // Get unique colors from current items for filter pills
+  const availableColors = Array.from(new Set(items.map(item => item.color))) as ClothingColor[];
+  const sortedColors = availableColors.sort();
+  
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      {/* Back button - goes back to types view within the category */}
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={handleBackFromItems}
-        className="mb-6"
-      >
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Back to Types
-      </Button>
-
-      {/* Items grid */}
-      {items.length === 0 ? (
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-lg shadow p-8 text-center">
-            <div className="text-6xl mb-4">👕</div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No items found</h3>
-            <p className="text-gray-600">Try adjusting your filters</p>
+    <div className="pb-6">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Header Bar */}
+          <div className="flex items-center justify-between h-14">
+            <button
+              onClick={handleBackFromItems}
+              className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition-colors"
+            >
+              <ArrowLeft className="h-5 w-5" />
+              <span className="font-medium">{selectedType}</span>
+            </button>
+            <span className="text-sm text-gray-500">
+              {filteredItems.length} {filteredItems.length === 1 ? 'item' : 'items'}
+            </span>
+          </div>
+          
+          {/* Search and Filters */}
+          <div className="py-3 space-y-3">
+            {/* Search Bar */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Search by brand, color, or tags..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-10 h-10"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            
+            {/* Color Filter Pills */}
+            {sortedColors.length > 0 && (
+              <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                <span className="text-xs text-gray-500 whitespace-nowrap">Colors:</span>
+                {sortedColors.map((color) => {
+                  const isSelected = selectedColor === color;
+                  const hexColor = COLOR_HEX_MAP[color];
+                  const isMulticolor = color === 'Multicolor';
+                  
+                  return (
+                    <button
+                      key={color}
+                      onClick={() => setSelectedColor(isSelected ? null : color)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+                        isSelected
+                          ? 'bg-indigo-600 text-white shadow-md'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      <div
+                        className={`w-3.5 h-3.5 rounded-full border-2 ${
+                          isSelected ? 'border-white' : 'border-gray-300'
+                        } ${color === 'White' ? 'shadow-sm' : ''}`}
+                        style={{
+                          background: isMulticolor ? hexColor : hexColor,
+                        }}
+                      />
+                      <span>{color}</span>
+                    </button>
+                  );
+                })}
+                {selectedColor && (
+                  <button
+                    onClick={() => setSelectedColor(null)}
+                    className="px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
-      ) : (
-        <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 2xl:grid-cols-9 gap-1.5 sm:gap-2">
-          {items.map((item) => (
-            <ClothingCard
-              key={item.id}
-              item={item}
-              imageUrl={imageUrls[item.id] || null}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              onView={onView}
-            />
-          ))}
-        </div>
-      )}
+      </div>
+
+      {/* Items Grid */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+        {filteredItems.length === 0 ? (
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-white rounded-lg shadow p-8 text-center">
+              <div className="text-6xl mb-4">🔍</div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">No items found</h3>
+              <p className="text-gray-600">
+                {searchQuery || selectedColor 
+                  ? 'Try adjusting your search or filters' 
+                  : 'No items in this category'}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 2xl:grid-cols-9 gap-1.5 sm:gap-2">
+            {filteredItems.map((item) => (
+              <ClothingCard
+                key={item.id}
+                item={item}
+                imageUrl={imageUrls[item.id] || null}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onView={onView}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
