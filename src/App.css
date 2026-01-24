@@ -109,3 +109,49 @@
 .safe-area-bottom {
 	padding-bottom: env(safe-area-inset-bottom);
 }
+
+/* React Advanced Cropper fixes for fullscreen display */
+.cropper {
+	/* Ensure cropper takes full height */
+	height: 100% !important;
+	width: 100% !important;
+}
+
+.cropper .advanced-cropper {
+	/* Fix for black screen issue */
+	height: 100% !important;
+	width: 100% !important;
+	background: #000 !important;
+}
+
+.cropper .advanced-cropper__wrapper {
+	/* Ensure wrapper fills container */
+	height: 100% !important;
+	width: 100% !important;
+}
+
+.cropper .advanced-cropper__image {
+	/* Image should fit within container */
+	max-height: 100%;
+	max-width: 100%;
+	object-fit: contain;
+}
+
+.cropper .advanced-cropper__stencil {
+	/* Crop box styling */
+	border: 2px solid rgba(255, 255, 255, 0.8);
+}
+
+.cropper .advanced-cropper__handler {
+	/* Make handles more visible and touch-friendly */
+	width: 20px !important;
+	height: 20px !important;
+	background: white;
+	border: 2px solid #000;
+	border-radius: 50%;
+}
+
+.cropper .advanced-cropper__line {
+	/* Make edge handles visible */
+	background: rgba(255, 255, 255, 0.5);
+}

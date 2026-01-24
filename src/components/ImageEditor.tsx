@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { Cropper, CropperRef } from 'react-advanced-cropper';
 import 'react-advanced-cropper/dist/style.css';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { RotateCw, RotateCcw, Check, X } from 'lucide-react';
 
 interface ImageEditorProps {
@@ -96,6 +96,12 @@ export function ImageEditor({ imageUrl, open, onClose, onSave }: ImageEditorProp
         className="max-w-full max-h-full w-full h-full m-0 p-0 rounded-none"
         hideCloseButton
       >
+        {/* Accessible title and description for screen readers */}
+        <DialogTitle className="sr-only">Edit Image</DialogTitle>
+        <DialogDescription className="sr-only">
+          Crop and rotate your clothing photo. Drag corners to maintain aspect ratio, drag edges to stretch freely.
+        </DialogDescription>
+
         {/* Fullscreen layout */}
         <div className="flex flex-col h-full w-full bg-black">
           {/* Crop area - takes all available space */}
@@ -103,15 +109,7 @@ export function ImageEditor({ imageUrl, open, onClose, onSave }: ImageEditorProp
             <Cropper
               ref={cropperRef}
               src={imageUrl}
-              className="h-full w-full"
-              
-              // Start with full image selected
-              defaultSize={({ imageSize, visibleArea }) => {
-                return {
-                  width: (visibleArea || imageSize).width,
-                  height: (visibleArea || imageSize).height,
-                };
-              }}
+              className="cropper h-full w-full"
               
               // Configure stencil (crop box) behavior
               stencilProps={{
@@ -145,6 +143,18 @@ export function ImageEditor({ imageUrl, open, onClose, onSave }: ImageEditorProp
               
               // Background styling
               backgroundClassName="bg-black"
+              
+              // Start with image fitted to screen
+              defaultCoordinates={({ imageSize, visibleArea }: any) => {
+                // Calculate the area that shows the full image
+                const defaultArea = visibleArea || imageSize;
+                return {
+                  left: 0,
+                  top: 0,
+                  width: defaultArea.width,
+                  height: defaultArea.height,
+                };
+              }}
             />
           </div>
 
