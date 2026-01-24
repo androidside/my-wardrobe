@@ -48,35 +48,64 @@ function blobToBase64(blob: Blob): Promise<string> {
  */
 function matchClothingType(labels: string[]): { category: ClothingCategory; type: string } | null {
   // Priority-based mapping: higher priority = more specific items
+  // EXPANDED in Phase 1: Added 30+ more types and keywords for better detection
   const typeMapping: Array<{ keywords: string[]; type: string; priority: number }> = [
-    // High priority - specific items (priority 10-9)
-    { keywords: ['hoodie', 'hooded sweatshirt', 'hooded sweater'], type: 'Hoodie', priority: 10 },
-    { keywords: ['sweater', 'pullover', 'jumper', 'cardigan'], type: 'Sweater', priority: 9 },
-    { keywords: ['t-shirt', 'tshirt', 't shirt', 'tee', 'tank top'], type: 'T-shirt', priority: 8 },
-    { keywords: ['jacket', 'blazer', 'sport coat'], type: 'Jacket', priority: 7 },
-    { keywords: ['coat', 'overcoat', 'trench coat'], type: 'Coat', priority: 7 },
-    { keywords: ['shirt', 'dress shirt', 'button-down'], type: 'Shirt', priority: 6 },
+    // TOPS - High priority specific items (priority 10-7)
+    { keywords: ['hoodie', 'hooded sweatshirt', 'hooded sweater', 'hood'], type: 'Hoodie', priority: 10 },
+    { keywords: ['sweater', 'pullover', 'jumper', 'knit top', 'knitwear'], type: 'Sweater', priority: 9 },
+    { keywords: ['cardigan', 'cardigan sweater', 'button sweater'], type: 'Cardigan', priority: 9 },
+    { keywords: ['tank top', 'tank', 'sleeveless shirt', 'muscle shirt', 'vest top'], type: 'Tank Top', priority: 8 },
+    { keywords: ['t-shirt', 'tshirt', 't shirt', 'tee', 'graphic tee', 'crew neck'], type: 'T-shirt', priority: 8 },
+    { keywords: ['polo', 'polo shirt', 'collar shirt'], type: 'Polo', priority: 8 },
+    { keywords: ['blouse', 'womens shirt', 'ladies shirt'], type: 'Blouse', priority: 8 },
+    { keywords: ['tunic', 'long shirt', 'tunic top'], type: 'Tunic', priority: 7 },
+    { keywords: ['crop top', 'cropped shirt', 'belly shirt'], type: 'Crop Top', priority: 8 },
+    { keywords: ['long sleeve', 'long-sleeve', 'longsleeve', 'ls shirt'], type: 'Long Sleeve', priority: 7 },
+    { keywords: ['shirt', 'dress shirt', 'button-down', 'button-up', 'button down', 'formal shirt'], type: 'Shirt', priority: 6 },
     
-    // Footwear (priority 8-7)
-    { keywords: ['sneaker', 'sneakers', 'athletic shoe', 'running shoe'], type: 'Sneakers', priority: 8 },
-    { keywords: ['boot', 'boots', 'hiking boot', 'work boot'], type: 'Boots', priority: 7 },
-    { keywords: ['sandal', 'sandals', 'flip-flop'], type: 'Sandals', priority: 7 },
+    // OUTERWEAR - Specific items (priority 10-7)
+    { keywords: ['bomber', 'bomber jacket', 'flight jacket'], type: 'Bomber', priority: 10 },
+    { keywords: ['windbreaker', 'wind breaker', 'shell jacket', 'rain jacket'], type: 'Windbreaker', priority: 9 },
+    { keywords: ['parka', 'winter coat', 'down jacket', 'padded jacket'], type: 'Parka', priority: 9 },
+    { keywords: ['trench coat', 'trench', 'raincoat', 'mac coat'], type: 'Trench Coat', priority: 9 },
+    { keywords: ['blazer', 'sport coat', 'suit jacket', 'sports jacket'], type: 'Blazer', priority: 8 },
+    { keywords: ['vest', 'waistcoat', 'sleeveless jacket', 'gilet'], type: 'Vest', priority: 8 },
+    { keywords: ['jacket', 'outerwear'], type: 'Jacket', priority: 7 },
+    { keywords: ['coat', 'overcoat', 'topcoat'], type: 'Coat', priority: 7 },
+    
+    // BOTTOMS - Lower body (priority 9-6)
+    { keywords: ['jeans', 'denim', 'denim pants', 'blue jeans'], type: 'Jeans', priority: 9 },
+    { keywords: ['chinos', 'chino pants', 'khaki', 'khakis'], type: 'Chinos', priority: 8 },
+    { keywords: ['cargo pants', 'cargo', 'utility pants'], type: 'Cargo Pants', priority: 8 },
+    { keywords: ['sweatpants', 'sweat pants', 'joggers', 'track pants', 'athletic pants'], type: 'Sweatpants', priority: 8 },
+    { keywords: ['leggings', 'legging', 'tights', 'yoga pants'], type: 'Leggings', priority: 8 },
+    { keywords: ['shorts', 'short pants', 'bermuda'], type: 'Shorts', priority: 7 },
+    { keywords: ['skirt', 'skirts', 'mini skirt', 'maxi skirt'], type: 'Skirt', priority: 7 },
+    { keywords: ['dress', 'dresses', 'gown', 'frock'], type: 'Dress', priority: 7 },
+    { keywords: ['pants', 'trousers', 'slacks', 'bottoms'], type: 'Pants', priority: 6 },
+    
+    // FOOTWEAR - Specific footwear (priority 10-6)
+    { keywords: ['sneaker', 'sneakers', 'athletic shoe', 'trainer', 'trainers', 'kicks'], type: 'Sneakers', priority: 9 },
+    { keywords: ['running shoe', 'running shoes', 'runner', 'runners'], type: 'Running Shoes', priority: 9 },
+    { keywords: ['boot', 'boots', 'ankle boot', 'chelsea boot', 'combat boot'], type: 'Boots', priority: 8 },
+    { keywords: ['heel', 'heels', 'high heel', 'stiletto', 'pumps'], type: 'Heels', priority: 8 },
+    { keywords: ['sandal', 'sandals', 'flip-flop', 'flip flop', 'slides', 'thongs'], type: 'Sandals', priority: 8 },
+    { keywords: ['loafer', 'loafers', 'slip-on', 'slip on', 'moccasin'], type: 'Loafers', priority: 8 },
+    { keywords: ['flat', 'flats', 'ballet flat', 'ballet shoe'], type: 'Flats', priority: 7 },
+    { keywords: ['slipper', 'slippers', 'house shoe', 'indoor shoe'], type: 'Slippers', priority: 7 },
     { keywords: ['shoe', 'shoes', 'footwear'], type: 'Shoes', priority: 6 },
     
-    // Lower body (priority 7-6)
-    { keywords: ['jeans', 'denim'], type: 'Jeans', priority: 7 },
-    { keywords: ['pants', 'trousers', 'slacks'], type: 'Pants', priority: 6 },
-    { keywords: ['shorts', 'short pants'], type: 'Shorts', priority: 6 },
-    { keywords: ['skirt', 'skirts'], type: 'Skirt', priority: 6 },
-    { keywords: ['dress', 'dresses'], type: 'Dress', priority: 6 },
-    
-    // Headwear (priority 6)
-    { keywords: ['hat', 'cap', 'baseball cap', 'beanie', 'beanie hat', 'winter hat', 'fedora', 'bucket hat'], type: 'Hat', priority: 6 },
-    // Socks (priority 6)
-    { keywords: ['sock', 'socks', 'ankle sock', 'crew sock', 'knee sock', 'athletic sock'], type: 'Socks', priority: 6 },
-    // Underwear (priortiy 6)
-    { keywords: ['underwear', 'undergarment', 'underclothes','underpants','boxers','briefs','panties'], type: 'Underwear', priority: 6 },
-    // Accessories (priority 5)
+    // ACCESSORIES - Specific accessories (priority 8-5)
+    { keywords: ['hat', 'cap', 'baseball cap', 'beanie', 'beanie hat', 'winter hat', 'fedora', 'bucket hat'], type: 'Hat', priority: 7 },
+    { keywords: ['sock', 'socks', 'ankle sock', 'crew sock', 'knee sock', 'athletic sock'], type: 'Socks', priority: 7 },
+    { keywords: ['scarf', 'scarves', 'neck scarf', 'muffler'], type: 'Scarf', priority: 7 },
+    { keywords: ['glove', 'gloves', 'mitten', 'mittens', 'hand warmer'], type: 'Gloves', priority: 7 },
+    { keywords: ['belt', 'waist belt', 'leather belt'], type: 'Belt', priority: 7 },
+    { keywords: ['bag', 'handbag', 'purse', 'backpack', 'tote', 'satchel', 'clutch'], type: 'Bag', priority: 7 },
+    { keywords: ['wallet', 'billfold', 'purse', 'card holder'], type: 'Wallet', priority: 7 },
+    { keywords: ['watch', 'wristwatch', 'timepiece', 'wrist watch'], type: 'Watch', priority: 7 },
+    { keywords: ['jewelry', 'jewellery', 'necklace', 'bracelet', 'earring', 'ring'], type: 'Jewelry', priority: 6 },
+    { keywords: ['underwear', 'undergarment', 'underclothes', 'underpants', 'boxers', 'briefs', 'panties', 'lingerie'], type: 'Underwear', priority: 6 },
     { keywords: ['accessory', 'accessories'], type: 'Accessories', priority: 5 },
   ];
 
@@ -331,8 +360,27 @@ function extractPotentialBrandsFromText(text: string): string[] {
   const potentialBrands: string[] = [];
   
   // Split text into words and phrases
-  // Remove common non-brand words (articles, prepositions, etc.)
-  const commonWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can', 'this', 'that', 'these', 'those', 'it', 'its', 'made', 'size', 'cm', 'eu', 'us', 'uk', 'xl', 'xxl', 's', 'm', 'l']);
+  // Remove common non-brand words (articles, prepositions, clothing terms, size labels, etc.)
+  const commonWords = new Set([
+    // Articles, prepositions, common words
+    'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can', 'this', 'that', 'these', 'those', 'it', 'its',
+    // Size labels
+    'size', 'cm', 'eu', 'us', 'uk', 'xl', 'xxl', 'xs', 's', 'm', 'l', 'small', 'medium', 'large', 'extra',
+    // Clothing terms
+    'made', 'shirt', 'pants', 'shoes', 'jacket', 'coat', 'dress', 'clothing', 'wear', 'style', 'fashion', 'apparel', 'garment',
+    // Materials
+    'cotton', 'polyester', 'wool', 'silk', 'leather', 'denim', 'nylon', 'spandex', 'lycra',
+    // Care instructions
+    'wash', 'clean', 'dry', 'iron', 'bleach', 'care', 'only', 'cold', 'warm', 'hot', 'machine', 'hand',
+    // Common label text
+    'product', 'item', 'code', 'color', 'colour', 'material', 'fabric', 'imported', 'export', 'quality',
+    // Numbers and percentages
+    'one', 'two', 'three', 'four', 'five', 'ten', 'percent',
+    // Country names (often on labels)
+    'china', 'usa', 'vietnam', 'india', 'bangladesh', 'turkey', 'italy', 'france', 'spain',
+    // Very short words that cause false positives
+    'es', 'la', 'le', 'de', 'un', 'el', 'en', 'et', 'no', 'si', 'so', 'up', 'go', 'me', 'we', 'my', 'or', 'if', 'to', 'he', 'it'
+  ]);
   
   // Extract capitalized words/phrases (likely brand names)
   const lines = text.split(/\n/);
@@ -342,17 +390,19 @@ function extractPotentialBrandsFromText(text: string): string[] {
     if (capitalizedWords) {
       for (const word of capitalizedWords) {
         const cleanWord = word.trim().replace(/[^\w\s]/g, '');
-        if (cleanWord.length >= 2 && cleanWord.length <= 30 && !commonWords.has(cleanWord.toLowerCase())) {
+        // Minimum brand length: 4 characters (prevents "Es", "La", etc.)
+        if (cleanWord.length >= 4 && cleanWord.length <= 30 && !commonWords.has(cleanWord.toLowerCase())) {
           potentialBrands.push(cleanWord);
         }
       }
     }
   }
   
-  // Also extract all words longer than 3 characters (excluding common words)
+  // Also extract all words longer than 4 characters (excluding common words)
+  // Increased from 3 to 4 to reduce false positives
   const words = text.split(/\s+/).filter((w: string) => {
     const clean = w.replace(/[^\w]/g, '').toLowerCase();
-    return clean.length >= 3 && clean.length <= 25 && !commonWords.has(clean);
+    return clean.length >= 4 && clean.length <= 25 && !commonWords.has(clean);
   });
   potentialBrands.push(...words);
   
@@ -589,9 +639,9 @@ function extractBrandOptions(
   }
 
   // Sort by score (highest first) and filter by minimum threshold
-  // Lowered threshold to 0.65 to catch more potential matches
+  // Raised threshold to 0.80 to reduce false positives (Phase 1 improvement)
   const sortedResults = Array.from(uniqueResults.values())
-    .filter(r => r.score >= 0.65)
+    .filter(r => r.score >= 0.80)
     .sort((a, b) => {
       // First sort by score
       if (Math.abs(a.score - b.score) > 0.05) {
