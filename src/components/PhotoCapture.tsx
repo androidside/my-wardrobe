@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { Upload, X, Edit2, Camera, SwitchCamera } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Upload, X, Edit2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ClothingAnalysis, analyzeClothingImage } from '@/services/imageAnalysis';
 import { ImageEditor } from './ImageEditor';
@@ -17,136 +17,12 @@ export function PhotoCapture({ onPhotoCapture, initialPreview, onAnalysisComplet
   const [showEditor, setShowEditor] = useState(false);
   const [tempImageUrl, setTempImageUrl] = useState<string | null>(null);
   const [finalImageBlob, setFinalImageBlob] = useState<Blob | null>(null);
-  const [showCamera, setShowCamera] = useState(false);
-  const [stream, setStream] = useState<MediaStream | null>(null);
-  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
-  const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   console.log('[PhotoCapture] Component rendered with callbacks:', {
     hasOnAnalysisComplete: !!onAnalysisComplete,
     hasOnAnalysisStart: !!onAnalysisStart,
   });
-
-  // Check if getUserMedia is available (requires HTTPS or localhost)
-  const isGetUserMediaAvailable = () => {
-    return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
-  };
-
-  // Start camera with flash OFF
-  const startCamera = async () => {
-    try {
-      // Check if getUserMedia is available
-      if (!isGetUserMediaAvailable()) {
-        console.warn('[PhotoCapture] getUserMedia not available (requires HTTPS)');
-        alert('Camera API requires secure connection. Using file picker instead.');
-        setShowCamera(false);
-        // Fallback to file input
-        handleFileUpload();
-        return;
-      }
-
-      const constraints: MediaStreamConstraints = {
-        video: {
-          facingMode: facingMode,
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-        },
-        audio: false,
-      };
-
-      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
-      
-      // Try to disable torch/flash if supported
-      const videoTrack = mediaStream.getVideoTracks()[0];
-      const capabilities = videoTrack.getCapabilities() as any;
-      
-      if (capabilities.torch) {
-        await videoTrack.applyConstraints({
-          // @ts-ignore - torch is not in standard types yet
-          advanced: [{ torch: false }]
-        });
-        console.log('[PhotoCapture] Flash/torch disabled');
-      }
-
-      setStream(mediaStream);
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
-    } catch (error: any) {
-      console.error('[PhotoCapture] Camera access error:', error);
-      
-      let errorMessage = 'Unable to access camera. ';
-      if (error.name === 'NotAllowedError') {
-        errorMessage += 'Camera permission denied. Please grant permission in your browser settings.';
-      } else if (error.name === 'NotFoundError') {
-        errorMessage += 'No camera found on this device.';
-      } else if (error.name === 'NotReadableError') {
-        errorMessage += 'Camera is already in use by another app.';
-      } else {
-        errorMessage += 'Please try using file upload instead.';
-      }
-      
-      alert(errorMessage);
-      setShowCamera(false);
-      
-      // Fallback to file input
-      setTimeout(() => handleFileUpload(), 100);
-    }
-  };
-
-  // Stop camera and release resources
-  const stopCamera = () => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-  };
-
-  // Capture photo from video stream
-  const capturePhoto = () => {
-    if (!videoRef.current) return;
-
-    const video = videoRef.current;
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.drawImage(video, 0, 0);
-    
-    canvas.toBlob((blob) => {
-      if (blob) {
-        const imageUrl = URL.createObjectURL(blob);
-        setTempImageUrl(imageUrl);
-        setShowEditor(true);
-        setShowCamera(false);
-        stopCamera();
-      }
-    }, 'image/jpeg', 0.95);
-  };
-
-  // Switch between front and rear camera
-  const switchCamera = async () => {
-    stopCamera();
-    setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
-  };
-
-  // Effect to start camera when facingMode changes
-  useEffect(() => {
-    if (showCamera) {
-      startCamera();
-    }
-    return () => {
-      stopCamera();
-    };
-  }, [facingMode, showCamera]);
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -239,32 +115,8 @@ export function PhotoCapture({ onPhotoCapture, initialPreview, onAnalysisComplet
     }
   };
 
-  const handleOpenCamera = () => {
-    // If getUserMedia is not available (HTTP connection), use file input with capture
-    if (!isGetUserMediaAvailable()) {
-      console.warn('[PhotoCapture] getUserMedia not available, using file input with capture');
-      // Use file input with capture attribute as fallback
-      if (fileInputRef.current) {
-        // Temporarily add capture attribute
-        fileInputRef.current.setAttribute('capture', 'environment');
-        fileInputRef.current.click();
-      }
-      return;
-    }
-    
-    // Use custom camera with flash control
-    setShowCamera(true);
-  };
-
-  const handleCloseCamera = () => {
-    setShowCamera(false);
-    stopCamera();
-  };
-
-  const handleFileUpload = () => {
+  const handleCameraClick = () => {
     if (fileInputRef.current) {
-      // Remove capture attribute for file upload (gallery selection)
-      fileInputRef.current.removeAttribute('capture');
       fileInputRef.current.click();
     }
   };
@@ -291,66 +143,15 @@ export function PhotoCapture({ onPhotoCapture, initialPreview, onAnalysisComplet
 
   return (
     <div className="space-y-4">
-      {/* Hidden file input for file upload */}
+      {/* Hidden file input with native camera capture */}
       <input
         ref={fileInputRef}
         type="file"
         accept="image/*"
+        capture="environment"
         onChange={handleFileChange}
         className="hidden"
       />
-
-      {/* Camera Interface - Full Screen */}
-      {showCamera && (
-        <div className="fixed inset-0 z-50 bg-black">
-          {/* Video Preview */}
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="w-full h-full object-cover"
-          />
-          
-          {/* Camera Controls Overlay */}
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6 pb-8">
-            <div className="flex items-center justify-around max-w-md mx-auto">
-              {/* Close Camera */}
-              <Button
-                type="button"
-                variant="secondary"
-                size="lg"
-                onClick={handleCloseCamera}
-                className="bg-white/20 hover:bg-white/30 text-white border-white/50"
-              >
-                <X className="h-5 w-5 mr-2" />
-                Cancel
-              </Button>
-
-              {/* Capture Photo */}
-              <Button
-                type="button"
-                size="lg"
-                onClick={capturePhoto}
-                className="bg-white hover:bg-gray-100 text-black px-8 py-6 rounded-full"
-              >
-                <Camera className="h-6 w-6" />
-              </Button>
-
-              {/* Switch Camera */}
-              <Button
-                type="button"
-                variant="secondary"
-                size="lg"
-                onClick={switchCamera}
-                className="bg-white/20 hover:bg-white/30 text-white border-white/50"
-              >
-                <SwitchCamera className="h-5 w-5" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Preview area - SMALLER MAX WIDTH */}
       <div className="max-w-md mx-auto">
@@ -383,41 +184,33 @@ export function PhotoCapture({ onPhotoCapture, initialPreview, onAnalysisComplet
             </div>
           </div>
         ) : (
-          <div className="w-full aspect-square bg-gray-50 rounded-lg flex flex-col items-center justify-center gap-3 border-2 border-dashed border-gray-400">
-            <Camera className="h-16 w-16 text-gray-400" />
+          <div
+            className="w-full aspect-square bg-gray-50 rounded-lg flex flex-col items-center justify-center gap-3 border-2 border-dashed border-gray-400 hover:border-gray-600 hover:bg-gray-100 transition-colors cursor-pointer"
+            onClick={handleCameraClick}
+          >
+            <Upload className="h-16 w-16 text-gray-400" />
             <div className="text-center px-4">
               <p className="text-base font-medium text-gray-700">
-                Take or Upload Photo
+                Upload Photo
               </p>
               <p className="text-sm text-gray-500">
-                Use camera or choose from gallery
+                Click to select or capture
               </p>
             </div>
           </div>
         )}
       </div>
 
-      {/* Action buttons */}
-      {!preview && !showCamera && (
-        <div className="flex gap-3">
-          <Button
-            type="button"
-            onClick={handleOpenCamera}
-            className="flex-1"
-          >
-            <Camera className="h-4 w-4 mr-2" />
-            Take Photo
-          </Button>
-          <Button
-            type="button"
-            onClick={handleFileUpload}
-            variant="secondary"
-            className="flex-1"
-          >
-            <Upload className="h-4 w-4 mr-2" />
-            Upload
-          </Button>
-        </div>
+      {/* Action button */}
+      {!preview && (
+        <Button
+          type="button"
+          onClick={handleCameraClick}
+          className="w-full"
+        >
+          <Upload className="h-4 w-4 mr-2" />
+          Choose Photo
+        </Button>
       )}
 
       {/* Image Editor Dialog */}
