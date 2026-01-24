@@ -122,11 +122,15 @@
 .advanced-cropper {
 	height: 100% !important;
 	width: 100% !important;
+	background: #000 !important;
 }
 
 .advanced-cropper__wrapper {
 	height: 100% !important;
 	width: 100% !important;
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
 }
 
 .advanced-cropper__background {
@@ -138,14 +142,21 @@
 	display: flex !important;
 	align-items: center !important;
 	justify-content: center !important;
+	max-height: 100% !important;
+	max-width: 100% !important;
 }
 
 .advanced-cropper__image {
-	max-height: 100% !important;
-	max-width: 100% !important;
+	max-height: 90vh !important;
+	max-width: 90vw !important;
 	height: auto !important;
 	width: auto !important;
 	object-fit: contain !important;
+	display: block !important;
+}
+
+.advanced-cropper__foreground {
+	pointer-events: auto !important;
 }
 
 /* Style crop box */
@@ -160,9 +171,11 @@
 	background: white !important;
 	border: 2px solid #000 !important;
 	border-radius: 50% !important;
+	z-index: 10 !important;
 }
 
 /* Make edge handles visible */
 .advanced-cropper__line {
 	background: rgba(255, 255, 255, 0.5) !important;
+	z-index: 10 !important;
 }

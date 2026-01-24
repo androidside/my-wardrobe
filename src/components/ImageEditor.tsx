@@ -103,9 +103,9 @@ export function ImageEditor({ imageUrl, open, onClose, onSave }: ImageEditorProp
         </DialogDescription>
 
         {/* Fullscreen layout */}
-        <div className="flex flex-col h-full w-full bg-black">
-          {/* Crop area - takes all available space */}
-          <div className="flex-1 relative min-h-0 overflow-hidden">
+        <div className="flex flex-col h-screen w-screen bg-black fixed inset-0">
+          {/* Crop area - takes remaining space after toolbar */}
+          <div className="flex-1 relative overflow-hidden" style={{ height: 'calc(100vh - 80px)' }}>
             <Cropper
               ref={cropperRef}
               src={imageUrl}
@@ -150,8 +150,8 @@ export function ImageEditor({ imageUrl, open, onClose, onSave }: ImageEditorProp
             />
           </div>
 
-          {/* Bottom toolbar - compact single line */}
-          <div className="flex items-center justify-around bg-black border-t border-gray-700 py-3 px-4 safe-area-inset-bottom">
+          {/* Bottom toolbar - compact single line - FIXED HEIGHT */}
+          <div className="flex-shrink-0 flex items-center justify-around bg-black border-t border-gray-700 py-3 px-4" style={{ height: '80px' }}>
             {/* Cancel */}
             <button
               type="button"
