@@ -1,27 +1,17 @@
-import { useState } from 'react';
-import { Trash2, Edit } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { ClothingItem } from '@/types/clothing';
 
 interface ClothingCardProps {
   item: ClothingItem;
   imageUrl?: string | null;
-  onEdit?: (item: ClothingItem) => void;
-  onDelete?: (id: string) => void;
   onView?: (item: ClothingItem) => void;
-  showActions?: boolean; // If false, hide action buttons entirely (for friend wardrobes)
 }
 
-export function ClothingCard({ item, imageUrl, onEdit, onDelete, onView, showActions = true }: ClothingCardProps) {
-  const [showActionsOverlay, setShowActionsOverlay] = useState(false);
-
+export function ClothingCard({ item, imageUrl, onView }: ClothingCardProps) {
   return (
     <Card
-      className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-      onClick={() => onView ? onView(item) : setShowActionsOverlay(!showActionsOverlay)}
-      onMouseEnter={() => setShowActionsOverlay(true)}
-      onMouseLeave={() => setShowActionsOverlay(false)}
+      className="overflow-hidden hover:shadow-lg hover:scale-[1.02] transition-all cursor-pointer"
+      onClick={() => onView && onView(item)}
     >
       {/* Image */}
       <div className="aspect-square bg-gray-100 relative overflow-hidden">
@@ -37,34 +27,6 @@ export function ClothingCard({ item, imageUrl, onEdit, onDelete, onView, showAct
               <div className="text-3xl mb-2">📷</div>
               <p className="text-sm">No image</p>
             </div>
-          </div>
-        )}
-
-        {/* Quick actions overlay */}
-        {showActions && showActionsOverlay && onEdit && onDelete && (
-          <div className="absolute inset-0 bg-black/60 flex items-center justify-center gap-2">
-            <Button
-              size="icon"
-              variant="secondary"
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit(item);
-              }}
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-            <Button
-              size="icon"
-              variant="destructive"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (confirm('Are you sure you want to delete this item?')) {
-                  onDelete(item.id);
-                }
-              }}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
           </div>
         )}
       </div>

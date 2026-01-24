@@ -154,10 +154,6 @@ function AppContent() {
   // Compute available filter options from items
   // Note: Filtering is now handled within WardrobeGallery component
 
-  const handleEdit = (item: ClothingItem) => {
-    setEditingItem(item);
-  };
-
   const handleWardrobeChange = (wardrobeId: string) => {
     console.log('[App] handleWardrobeChange called with:', wardrobeId);
     // Reset all selections when switching wardrobes
@@ -278,8 +274,6 @@ function AppContent() {
             onBrandSelect={setSelectedBrand}
             onTagSelect={setSelectedTag}
             onViewModeChange={setViewMode}
-            onEdit={handleEdit}
-            onDelete={deleteItem}
             onView={(item) => setSelectedItem(item)}
           />
         ) : activePage === 'profile' ? (
@@ -371,6 +365,11 @@ function AppContent() {
         item={selectedItem}
         open={!!selectedItem}
         onOpenChange={(open) => !open && setSelectedItem(null)}
+        onEdit={(item) => {
+          setEditingItem(item);
+          setSelectedItem(null);
+        }}
+        onDelete={deleteItem}
       />
 
       {/* Add Item Dialog */}

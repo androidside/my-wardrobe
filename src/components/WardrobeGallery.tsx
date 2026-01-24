@@ -132,8 +132,6 @@ interface WardrobeGalleryProps {
   onBrandSelect: (brand: string | null) => void; // Callback when brand is selected
   onTagSelect: (tag: ClothingTag | null) => void; // Callback when tag is selected
   onViewModeChange: (mode: 'all-items' | 'brands' | 'tags' | null) => void; // Callback for view mode changes
-  onEdit: (item: ClothingItem) => void;
-  onDelete: (id: string) => void;
   onView?: (item: ClothingItem) => void;
 }
 
@@ -150,8 +148,6 @@ export function WardrobeGallery({
   onBrandSelect,
   onTagSelect,
   onViewModeChange,
-  onEdit, 
-  onDelete, 
   onView 
 }: WardrobeGalleryProps) {
   const [imageUrls, setImageUrls] = useState<Record<string, string | null>>({});
@@ -519,8 +515,6 @@ export function WardrobeGallery({
                   key={item.id}
                   item={item}
                   imageUrl={imageUrls[item.id!] || null}
-                  onEdit={onEdit}
-                  onDelete={onDelete}
                   onView={onView}
                 />
               ))}
@@ -803,8 +797,6 @@ export function WardrobeGallery({
                   key={item.id}
                   item={item}
                   imageUrl={imageUrls[item.id!] || null}
-                  onEdit={onEdit}
-                  onDelete={onDelete}
                   onView={onView}
                 />
               ))}
@@ -943,8 +935,6 @@ export function WardrobeGallery({
                   key={item.id}
                   item={item}
                   imageUrl={imageUrls[item.id!] || null}
-                  onEdit={onEdit}
-                  onDelete={onDelete}
                   onView={onView}
                 />
               ))}
@@ -1111,8 +1101,6 @@ export function WardrobeGallery({
                 key={item.id}
                 item={item}
                 imageUrl={imageUrls[item.id] || null}
-                onEdit={onEdit}
-                onDelete={onDelete}
                 onView={onView}
               />
             ))}

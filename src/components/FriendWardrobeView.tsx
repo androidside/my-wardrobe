@@ -272,7 +272,6 @@ export function FriendWardrobeView({ friendId, friendUsername, onBack }: FriendW
                         item={item}
                         imageUrl={imageUrls[item.id] || null}
                         onView={() => setSelectedItem(item)}
-                        showActions={false}
                       />
                     ))}
                   </div>
