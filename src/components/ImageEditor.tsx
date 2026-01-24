@@ -105,11 +105,12 @@ export function ImageEditor({ imageUrl, open, onClose, onSave }: ImageEditorProp
         {/* Fullscreen layout */}
         <div className="flex flex-col h-full w-full bg-black">
           {/* Crop area - takes all available space */}
-          <div className="flex-1 relative min-h-0">
+          <div className="flex-1 relative min-h-0 overflow-hidden">
             <Cropper
               ref={cropperRef}
               src={imageUrl}
-              className="cropper h-full w-full"
+              className="cropper"
+              style={{ height: '100%', width: '100%' }}
               
               // Configure stencil (crop box) behavior
               stencilProps={{
@@ -144,17 +145,8 @@ export function ImageEditor({ imageUrl, open, onClose, onSave }: ImageEditorProp
               // Background styling
               backgroundClassName="bg-black"
               
-              // Start with image fitted to screen
-              defaultCoordinates={({ imageSize, visibleArea }: any) => {
-                // Calculate the area that shows the full image
-                const defaultArea = visibleArea || imageSize;
-                return {
-                  left: 0,
-                  top: 0,
-                  width: defaultArea.width,
-                  height: defaultArea.height,
-                };
-              }}
+              // Disable animations for faster initial render
+              transitions={false}
             />
           </div>
 

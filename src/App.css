@@ -112,46 +112,57 @@
 
 /* React Advanced Cropper fixes for fullscreen display */
 .cropper {
-	/* Ensure cropper takes full height */
+	position: relative;
+	height: 100%;
+	width: 100%;
+	background: #000;
+}
+
+/* Fix container sizing */
+.advanced-cropper {
 	height: 100% !important;
 	width: 100% !important;
 }
 
-.cropper .advanced-cropper {
-	/* Fix for black screen issue */
+.advanced-cropper__wrapper {
 	height: 100% !important;
 	width: 100% !important;
+}
+
+.advanced-cropper__background {
 	background: #000 !important;
 }
 
-.cropper .advanced-cropper__wrapper {
-	/* Ensure wrapper fills container */
-	height: 100% !important;
-	width: 100% !important;
+/* Ensure image is visible and properly sized */
+.advanced-cropper__image-wrapper {
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
 }
 
-.cropper .advanced-cropper__image {
-	/* Image should fit within container */
-	max-height: 100%;
-	max-width: 100%;
-	object-fit: contain;
+.advanced-cropper__image {
+	max-height: 100% !important;
+	max-width: 100% !important;
+	height: auto !important;
+	width: auto !important;
+	object-fit: contain !important;
 }
 
-.cropper .advanced-cropper__stencil {
-	/* Crop box styling */
-	border: 2px solid rgba(255, 255, 255, 0.8);
+/* Style crop box */
+.advanced-cropper__stencil {
+	border: 2px solid rgba(255, 255, 255, 0.8) !important;
 }
 
-.cropper .advanced-cropper__handler {
-	/* Make handles more visible and touch-friendly */
+/* Make handles more visible and touch-friendly */
+.advanced-cropper__handler {
 	width: 20px !important;
 	height: 20px !important;
-	background: white;
-	border: 2px solid #000;
-	border-radius: 50%;
+	background: white !important;
+	border: 2px solid #000 !important;
+	border-radius: 50% !important;
 }
 
-.cropper .advanced-cropper__line {
-	/* Make edge handles visible */
-	background: rgba(255, 255, 255, 0.5);
+/* Make edge handles visible */
+.advanced-cropper__line {
+	background: rgba(255, 255, 255, 0.5) !important;
 }
