@@ -377,33 +377,33 @@ export function SignupPage({ onSwitchToLogin, onSignup }: SignupPageProps) {
             <div className="border-b border-gray-200 pb-4 mb-4">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Information</h3>
               
-              {/* Email Field */}
-              <div>
-                <Label htmlFor="email" className="text-sm font-medium text-gray-700 block mb-2">
+            {/* Email Field */}
+            <div>
+              <Label htmlFor="email" className="text-sm font-medium text-gray-700 block mb-2">
                   Email Address *
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    if (errors.email) setErrors({ ...errors, email: undefined });
-                  }}
-                  placeholder="you@example.com"
-                  className={`w-full ${errors.email ? 'border-red-500' : ''}`}
-                  disabled={isLoading}
-                />
-                {errors.email && (
-                  <p className="text-red-500 text-sm mt-1">{errors.email}</p>
-                )}
-              </div>
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (errors.email) setErrors({ ...errors, email: undefined });
+                }}
+                placeholder="you@example.com"
+                className={`w-full ${errors.email ? 'border-red-500' : ''}`}
+                disabled={isLoading}
+              />
+              {errors.email && (
+                <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+              )}
+            </div>
 
-              {/* Password Field */}
+            {/* Password Field */}
               <div className="mt-4">
-                <Label htmlFor="password" className="text-sm font-medium text-gray-700 block mb-2">
+              <Label htmlFor="password" className="text-sm font-medium text-gray-700 block mb-2">
                   Password *
-                </Label>
+              </Label>
               <Input
                 id="password"
                 type="password"
@@ -424,11 +424,11 @@ export function SignupPage({ onSwitchToLogin, onSignup }: SignupPageProps) {
               </p>
             </div>
 
-              {/* Confirm Password Field */}
+            {/* Confirm Password Field */}
               <div className="mt-4">
-                <Label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700 block mb-2">
+              <Label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700 block mb-2">
                   Confirm Password *
-                </Label>
+              </Label>
               <Input
                 id="confirmPassword"
                 type="password"

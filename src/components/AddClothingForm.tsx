@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { PhotoCapture } from './PhotoCapture';
 import { AnalysisResultDialog } from './AnalysisResultDialog';
+import { CustomTagDialog } from './CustomTagDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,30 +28,83 @@ import {
   CLOTHING_TYPES_BY_CATEGORY,
 } from '@/types/clothing';
 import { useAuth } from '@/contexts/AuthContext';
-import { getUserProfile } from '@/services/firestore';
+import { getUserProfile, saveUserProfile } from '@/services/firestore';
 import { UserProfile } from '@/types/profile';
 import { ClothingAnalysis } from '@/services/imageAnalysis';
 import { BRAND_LIST } from '@/data/brands';
 import { useWardrobeContext } from '@/contexts/WardrobeContext';
 
-// Available tags
-const AVAILABLE_TAGS: ClothingTag[] = [
-  'Sportswear',
-  'Gym',
-  'Running',
-  'Outdoor',
-  'Formal',
-  'Casual',
-  'Beach',
-  'Winter',
-  'Summer',
-  'Workout',
-  'Travel',
-  'Party',
-  'Business',
-  'Athletic',
-  'Comfort',
-];
+// Organized tags by category
+const TAG_CATEGORIES = {
+  OCCASION: {
+    label: 'Occasion',
+    icon: '📅',
+    tags: [
+      'Work/Office',
+      'Formal Event',
+      'Party/Night Out',
+      'Vacation',
+      'Travel',
+      'Home/Lounge',
+      'Business Casual',
+      'Family Event',
+      'Date Night',
+    ] as ClothingTag[],
+  },
+  ACTIVITY: {
+    label: 'Activity',
+    icon: '🏃',
+    tags: [
+      'Sport/Active',
+      'Gym/Training',
+      'Yoga/Stretch',
+      'Outdoor',
+      'Swim/Beach',
+      'Winter Sports',
+      'Running',
+      'Cycling',
+    ] as ClothingTag[],
+  },
+  SEASON: {
+    label: 'Season / Weather',
+    icon: '🌤️',
+    tags: [
+      'Summer',
+      'Winter',
+      'Spring/Fall',
+      'Rainy Day',
+      'Hot Weather',
+      'Cold Weather',
+    ] as ClothingTag[],
+  },
+  STYLE: {
+    label: 'Style / Vibe',
+    icon: '✨',
+    tags: [
+      'Trendy',
+      'Streetwear',
+      'Minimalist',
+      'Bold/Statement',
+      'Classic',
+      'Edgy',
+      'Romantic',
+      'Vintage',
+      'Casual',
+    ] as ClothingTag[],
+  },
+  COMFORT: {
+    label: 'Comfort / Fit',
+    icon: '☁️',
+    tags: [
+      'Cozy/Comfort',
+      'Stretchy',
+      'Lightweight',
+      'Warm',
+      'Breathable',
+      'Relaxed Fit',
+    ] as ClothingTag[],
+  },
+};
 
 const COLORS: ClothingColor[] = [
   'Black',
@@ -69,6 +123,25 @@ const COLORS: ClothingColor[] = [
   'Multicolor',
   'Other',
 ];
+
+// Color hex mapping for visual chips
+const COLOR_HEX_MAP: Record<ClothingColor, string> = {
+  'Black': '#000000',
+  'White': '#FFFFFF',
+  'Gray': '#808080',
+  'Navy': '#000080',
+  'Blue': '#0000FF',
+  'Red': '#FF0000',
+  'Green': '#008000',
+  'Yellow': '#FFFF00',
+  'Orange': '#FFA500',
+  'Pink': '#FFC0CB',
+  'Purple': '#800080',
+  'Brown': '#8B4513',
+  'Beige': '#F5F5DC',
+  'Multicolor': 'linear-gradient(135deg, #FF0000 0%, #FF7F00 16.67%, #FFFF00 33.33%, #00FF00 50%, #0000FF 66.67%, #4B0082 83.33%, #9400D3 100%)',
+  'Other': '#CCCCCC',
+};
 
 interface AddClothingFormProps {
   onSubmit: (item: ClothingItemInput, wardrobeId?: string) => Promise<void>;
@@ -98,6 +171,11 @@ export function AddClothingForm({ onSubmit, onCancel, existingItems = [], defaul
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [analysisResult, setAnalysisResult] = useState<ClothingAnalysis | null>(null);
   const [showAnalysisDialog, setShowAnalysisDialog] = useState(false);
+  
+  // Custom tags state
+  const [customTags, setCustomTags] = useState<string[]>([]);
+  const [showCustomTagDialog, setShowCustomTagDialog] = useState(false);
+  const [selectedCustomTags, setSelectedCustomTags] = useState<string[]>([]);
   
   // Brand autocomplete state
   const [brandSuggestions, setBrandSuggestions] = useState<string[]>([]);
@@ -193,7 +271,7 @@ export function AddClothingForm({ onSubmit, onCancel, existingItems = [], defaul
     brandInputRef.current?.focus();
   };
 
-  // Load user profile on mount
+  // Load user profile and custom tags on mount
   useEffect(() => {
     const loadProfile = async () => {
       if (user) {
@@ -201,6 +279,10 @@ export function AddClothingForm({ onSubmit, onCancel, existingItems = [], defaul
           const profile = await getUserProfile(user.uid);
           if (profile) {
             setUserProfile(profile);
+            // Load custom tags from profile
+            if (profile.customTags && Array.isArray(profile.customTags)) {
+              setCustomTags(profile.customTags);
+            }
           }
         } catch (error) {
           console.error('Error loading user profile:', error);
@@ -359,6 +441,54 @@ export function AddClothingForm({ onSubmit, onCancel, existingItems = [], defaul
     }
   };
 
+  // Handler for creating a custom tag
+  const handleCreateCustomTag = async (tagName: string) => {
+    if (!user) {
+      throw new Error('User must be logged in to create tags');
+    }
+
+    // Add to local state
+    const newCustomTags = [...customTags, tagName];
+    setCustomTags(newCustomTags);
+
+    // Save to user profile
+    try {
+      await saveUserProfile(user.uid, {
+        customTags: newCustomTags,
+      });
+      console.log('Custom tag created and saved:', tagName);
+    } catch (error) {
+      console.error('Error saving custom tag:', error);
+      // Revert local state on error
+      setCustomTags(customTags);
+      throw error;
+    }
+  };
+
+  // Handler for deleting a custom tag
+  const handleDeleteCustomTag = async (tagName: string) => {
+    if (!user) return;
+
+    // Remove from local state
+    const newCustomTags = customTags.filter(t => t !== tagName);
+    setCustomTags(newCustomTags);
+
+    // Also remove from selected tags if it was selected
+    setSelectedCustomTags(selectedCustomTags.filter(t => t !== tagName));
+
+    // Save to user profile
+    try {
+      await saveUserProfile(user.uid, {
+        customTags: newCustomTags,
+      });
+      console.log('Custom tag deleted:', tagName);
+    } catch (error) {
+      console.error('Error deleting custom tag:', error);
+      // Revert local state on error
+      setCustomTags(customTags);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -381,10 +511,13 @@ export function AddClothingForm({ onSubmit, onCancel, existingItems = [], defaul
     try {
       setIsSubmitting(true);
 
+      // Combine standard tags and custom tags
+      const allTags = [...selectedTags, ...selectedCustomTags];
+      
       const item: ClothingItemInput = {
         category: category as ClothingCategory,
         type,
-        tags: selectedTags.length > 0 ? selectedTags : undefined,
+        tags: allTags.length > 0 ? (allTags as ClothingTag[]) : undefined,
         brand,
         size,
         color,
@@ -421,7 +554,7 @@ export function AddClothingForm({ onSubmit, onCancel, existingItems = [], defaul
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-4">
       {/* Photo Capture */}
       <div>
         <Label className="text-base mb-2 block">Photo *</Label>
@@ -461,315 +594,475 @@ export function AddClothingForm({ onSubmit, onCancel, existingItems = [], defaul
         </div>
       )}
 
-      {/* Category */}
-      <div>
-        <Label htmlFor="category" className="text-base">
-          Category *
-        </Label>
-        <Select 
-          value={category} 
-          onValueChange={(value) => setCategory(value as ClothingCategory)}
-        >
-          <SelectTrigger id="category" className="mt-1">
-            <SelectValue placeholder="Select category" />
-          </SelectTrigger>
-          <SelectContent>
-            {Object.keys(CLOTHING_TYPES_BY_CATEGORY).map((cat) => (
-              <SelectItem key={cat} value={cat}>
-                {cat}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Type (filtered by category) */}
-      <div>
-        <Label htmlFor="type" className="text-base">
-          Type *
-        </Label>
-        <Select 
-          value={type} 
-          onValueChange={(value) => setType(value)}
-          disabled={!category}
-        >
-          <SelectTrigger id="type" className="mt-1">
-            <SelectValue placeholder={category ? "Select type" : "Select category first"} />
-          </SelectTrigger>
-          <SelectContent>
-            {category ? (
-              availableTypes.map((t) => (
-                <SelectItem key={t} value={t}>
-                  {t}
-                </SelectItem>
-              ))
-            ) : (
-              <div className="px-2 py-1.5 text-sm text-gray-500">
-                Please select a category first
-              </div>
-            )}
-          </SelectContent>
-        </Select>
-        {!category && (
-          <p className="text-xs text-gray-500 mt-1">Please select a category first</p>
-        )}
-      </div>
-
-      {/* Tags (multi-select) */}
-      <div>
-        <Label className="text-base mb-2 block">Tags (Optional)</Label>
-        <div className="flex flex-wrap gap-2 mt-1">
-          {AVAILABLE_TAGS.map((tag) => {
-            const isSelected = selectedTags.includes(tag);
-            return (
-              <button
-                key={tag}
-                type="button"
-                onClick={() => {
-                  if (isSelected) {
-                    setSelectedTags(selectedTags.filter(t => t !== tag));
-                  } else {
-                    setSelectedTags([...selectedTags, tag]);
-                  }
-                }}
-                className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
-                  isSelected
-                    ? 'bg-indigo-600 text-white border-indigo-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:border-indigo-300 hover:bg-indigo-50'
-                }`}
-              >
-                {tag}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Brand */}
-      <div className="relative">
-        <Label htmlFor="brand" className="text-base">
-          Brand *
-        </Label>
-        <Input
-          ref={brandInputRef}
-          id="brand"
-          type="text"
-          value={brand}
-          onChange={(e) => setBrand(e.target.value)}
-          onFocus={() => {
-            if (brandSuggestions.length > 0) {
-              setShowBrandSuggestions(true);
-            }
-          }}
-          onKeyDown={handleBrandKeyDown}
-          placeholder="e.g., Nike, Zara, H&M"
-          required
-          className="mt-1"
-          autoComplete="off"
-        />
-        {showBrandSuggestions && brandSuggestions.length > 0 && (
-          <div
-            ref={suggestionsRef}
-            className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto"
-          >
-            {brandSuggestions.map((suggestion, index) => (
-              <button
-                key={suggestion}
-                type="button"
-                onClick={() => handleBrandSelect(suggestion)}
-                className={`w-full text-left px-3 py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none ${
-                  index === selectedSuggestionIndex ? 'bg-gray-100' : ''
-                }`}
-              >
-                {suggestion}
-              </button>
-            ))}
+      {/* Basic Details Section */}
+      <div className="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Basic Details</h3>
+        
+        {/* Category + Type (2-column grid) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Category */}
+          <div>
+            <Label htmlFor="category" className="text-base">
+              Category *
+            </Label>
+            <Select 
+              value={category} 
+              onValueChange={(value) => setCategory(value as ClothingCategory)}
+            >
+              <SelectTrigger id="category" className="mt-1">
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.keys(CLOTHING_TYPES_BY_CATEGORY).map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        )}
-      </div>
 
-      {/* Size */}
-      <div>
-        <Label htmlFor="size" className="text-base">
-          {showingShoeSizes 
-            ? 'Size (European) *' 
-            : isPantsOrJeans 
-            ? 'Pants Size (US) *' 
-            : 'Size *'}
-        </Label>
-        {isPantsOrJeans ? (
+          {/* Type (filtered by category) */}
+          <div>
+            <Label htmlFor="type" className="text-base">
+              Type *
+            </Label>
+            <Select 
+              value={type} 
+              onValueChange={(value) => setType(value)}
+              disabled={!category}
+            >
+              <SelectTrigger id="type" className="mt-1">
+                <SelectValue placeholder={category ? "Select type" : "Select category first"} />
+              </SelectTrigger>
+              <SelectContent>
+                {category ? (
+                  availableTypes.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <div className="px-2 py-1.5 text-sm text-gray-500">
+                    Please select a category first
+                  </div>
+                )}
+              </SelectContent>
+            </Select>
+            {!category && (
+              <p className="text-xs text-gray-500 mt-1">Please select a category first</p>
+            )}
+          </div>
+        </div>
+
+        {/* Brand */}
+        <div className="relative">
+          <Label htmlFor="brand" className="text-base">
+            Brand *
+          </Label>
           <Input
-            id="size"
+            ref={brandInputRef}
+            id="brand"
             type="text"
-            value={size}
-            onChange={(e) => setSize(e.target.value as ClothingSize)}
-            placeholder="e.g., 32, 34, 36, M, L"
+            value={brand}
+            onChange={(e) => setBrand(e.target.value)}
+            onFocus={() => {
+              if (brandSuggestions.length > 0) {
+                setShowBrandSuggestions(true);
+              }
+            }}
+            onKeyDown={handleBrandKeyDown}
+            placeholder="e.g., Nike, Zara, H&M"
             required
             className="mt-1"
+            autoComplete="off"
           />
-        ) : (
-          <Select value={size} onValueChange={(value) => setSize(value as ClothingSize)}>
-            <SelectTrigger id="size" className="mt-1">
-              <SelectValue placeholder={showingShoeSizes ? "Select shoe size" : "Select size"} />
-            </SelectTrigger>
-            <SelectContent>
-              {availableSizes.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {showingShoeSizes ? formatShoeSize(s as any) : s}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-      </div>
-
-      {/* Primary Color */}
-      <div>
-        <Label htmlFor="color" className="text-base">
-          Primary Color *
-        </Label>
-        <Select value={color} onValueChange={(value) => setColor(value as ClothingColor)}>
-          <SelectTrigger id="color" className="mt-1">
-            <SelectValue placeholder="Select primary color" />
-          </SelectTrigger>
-          <SelectContent>
-            {COLORS.map((c) => (
-              <SelectItem key={c} value={c}>
-                {c}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Additional Colors (Multi-select) */}
-      <div>
-        <Label className="text-base mb-2 block">Additional Colors (Optional)</Label>
-        {selectedColors.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-2">
-            {selectedColors.map((col, index) => (
-              <div key={index} className="flex items-center gap-1 px-3 py-1 bg-indigo-100 rounded-full">
-                <span className="text-sm font-medium text-indigo-900">{col}</span>
+          {showBrandSuggestions && brandSuggestions.length > 0 && (
+            <div
+              ref={suggestionsRef}
+              className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto"
+            >
+              {brandSuggestions.map((suggestion, index) => (
                 <button
+                  key={suggestion}
                   type="button"
-                  onClick={() => setSelectedColors(selectedColors.filter((_, i) => i !== index))}
-                  className="text-indigo-600 hover:text-indigo-800 ml-1 text-lg leading-none"
-                  aria-label={`Remove ${col}`}
+                  onClick={() => handleBrandSelect(suggestion)}
+                  className={`w-full text-left px-3 py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none ${
+                    index === selectedSuggestionIndex ? 'bg-gray-100' : ''
+                  }`}
                 >
-                  ×
+                  {suggestion}
                 </button>
-              </div>
-            ))}
-          </div>
-        )}
-        <Select
-          value=""
-          onValueChange={(value) => {
-            if (value && !selectedColors.includes(value as ClothingColor) && value !== color) {
-              setSelectedColors([...selectedColors, value as ClothingColor]);
-            }
-          }}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Add another color" />
-          </SelectTrigger>
-          <SelectContent>
-            {COLORS.filter((c) => c !== color && !selectedColors.includes(c)).map((c) => (
-              <SelectItem key={c} value={c}>
-                {c}
-              </SelectItem>
-            ))}
-            {COLORS.filter((c) => c !== color && !selectedColors.includes(c)).length === 0 && (
-              <div className="px-2 py-1.5 text-sm text-gray-500">All colors added</div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Size + Cost (2-column grid) */}
+        <div className="grid grid-cols-2 gap-4">
+          {/* Size */}
+          <div>
+            <Label htmlFor="size" className="text-base">
+              {showingShoeSizes 
+                ? 'Size (EU) *' 
+                : isPantsOrJeans 
+                ? 'Pants Size *' 
+                : 'Size *'}
+            </Label>
+            {isPantsOrJeans ? (
+              <Input
+                id="size"
+                type="text"
+                value={size}
+                onChange={(e) => setSize(e.target.value as ClothingSize)}
+                placeholder="e.g., 32, M, L"
+                required
+                className="mt-1"
+              />
+            ) : (
+              <Select value={size} onValueChange={(value) => setSize(value as ClothingSize)}>
+                <SelectTrigger id="size" className="mt-1">
+                  <SelectValue placeholder={showingShoeSizes ? "Select size" : "Select size"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableSizes.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {showingShoeSizes ? formatShoeSize(s as any) : s}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
-          </SelectContent>
-        </Select>
-        <p className="text-xs text-gray-500 mt-1">Add additional colors for multicolor items</p>
-      </div>
+          </div>
 
-      {/* Pattern Selection */}
-      <div>
-        <Label htmlFor="pattern" className="text-base">
-          Pattern (Optional)
-        </Label>
-        <Select value={pattern} onValueChange={(value) => setPattern(value as ClothingPattern)}>
-          <SelectTrigger id="pattern" className="mt-1">
-            <SelectValue />
-          </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Solid">Solid</SelectItem>
-              <SelectItem value="Stripes">Stripes</SelectItem>
-              <SelectItem value="Checks">Checks</SelectItem>
-              <SelectItem value="Plaid">Plaid</SelectItem>
-              <SelectItem value="Polka Dots">Polka Dots</SelectItem>
-              <SelectItem value="Floral">Floral</SelectItem>
-              <SelectItem value="Abstract">Abstract</SelectItem>
-              <SelectItem value="Geometric">Geometric</SelectItem>
-              <SelectItem value="Corduroy">Corduroy</SelectItem>
-              <SelectItem value="Other">Other</SelectItem>
-            </SelectContent>
-        </Select>
-      </div>
-
-      {/* Cost */}
-      <div>
-        <Label htmlFor="cost" className="text-base">
-          Cost ($) *
-        </Label>
-        <Input
-          id="cost"
-          type="number"
-          step="0.01"
-          min="0"
-          value={cost}
-          onChange={(e) => setCost(e.target.value)}
-          placeholder="0.00"
-          required
-          className="mt-1"
-        />
-      </div>
-
-      {/* Formality Level */}
-      <div>
-        <Label className="text-base block mb-2">
-          Formality Level *
-        </Label>
-        <div className="space-y-2">
-          <Slider
-            value={[formalityLevel]}
-            onValueChange={(value: number[]) => setFormalityLevel(value[0] as FormalityLevel)}
-            min={1}
-            max={5}
-            step={1}
-            className="w-full"
-          />
-          <div className="flex justify-between text-xs text-gray-500 px-1">
-            <span>Very Informal</span>
-            <span className="font-medium text-gray-700">
-              {formalityLevel === 1 && 'Very Informal'}
-              {formalityLevel === 2 && 'Informal'}
-              {formalityLevel === 3 && 'Casual'}
-              {formalityLevel === 4 && 'Formal'}
-              {formalityLevel === 5 && 'Very Formal'}
-            </span>
-            <span>Very Formal</span>
+          {/* Cost */}
+          <div>
+            <Label htmlFor="cost" className="text-base">
+              Cost ($) *
+            </Label>
+            <Input
+              id="cost"
+              type="number"
+              step="0.01"
+              min="0"
+              value={cost}
+              onChange={(e) => setCost(e.target.value)}
+              placeholder="0.00"
+              required
+              className="mt-1"
+            />
           </div>
         </div>
       </div>
 
-      {/* Notes (Optional) */}
-      <div>
-        <Label htmlFor="notes" className="text-base">
-          Notes (Optional)
-        </Label>
-        <Input
-          id="notes"
-          type="text"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Any additional notes..."
-          className="mt-1"
-        />
+      {/* Appearance Section */}
+      <div className="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Appearance</h3>
+        
+        {/* Primary Color */}
+        <div>
+          <Label className="text-base mb-2 block">
+            Primary Color *
+          </Label>
+          <div className="grid grid-cols-5 sm:grid-cols-8 gap-2 mt-1">
+            {COLORS.map((c) => {
+              const hexColor = COLOR_HEX_MAP[c];
+              const isMulticolor = c === 'Multicolor';
+              const isSelected = color === c;
+              
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setColor(c)}
+                  className={`relative flex flex-col items-center gap-1 p-2 rounded-lg transition-all ${
+                    isSelected
+                      ? 'ring-2 ring-indigo-600 bg-indigo-50'
+                      : 'hover:bg-gray-100'
+                  }`}
+                  title={c}
+                >
+                  <div
+                    className={`w-8 h-8 rounded-full border-2 ${
+                      isSelected ? 'border-indigo-600' : 'border-gray-300'
+                    } ${c === 'White' ? 'shadow-sm' : ''}`}
+                    style={{
+                      background: isMulticolor ? hexColor : hexColor,
+                    }}
+                  />
+                  <span className={`text-xs text-center leading-tight ${
+                    isSelected ? 'font-semibold text-indigo-900' : 'text-gray-600'
+                  }`}>
+                    {c}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {!color && (
+            <p className="text-xs text-red-500 mt-1">Please select a primary color</p>
+          )}
+        </div>
+
+        {/* Additional Colors (Multi-select) */}
+        <div>
+          <Label className="text-base mb-2 block">Additional Colors (Optional)</Label>
+          <p className="text-xs text-gray-500 mb-2">Click to add/remove additional colors for multicolor items</p>
+          <div className="grid grid-cols-5 sm:grid-cols-8 gap-2">
+            {COLORS.filter((c) => c !== color).map((c) => {
+              const hexColor = COLOR_HEX_MAP[c];
+              const isMulticolor = c === 'Multicolor';
+              const isSelected = selectedColors.includes(c);
+              
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => {
+                    if (isSelected) {
+                      setSelectedColors(selectedColors.filter(sc => sc !== c));
+                    } else {
+                      setSelectedColors([...selectedColors, c]);
+                    }
+                  }}
+                  className={`relative flex flex-col items-center gap-1 p-2 rounded-lg transition-all ${
+                    isSelected
+                      ? 'ring-2 ring-indigo-600 bg-indigo-50'
+                      : 'hover:bg-gray-100'
+                  }`}
+                  title={c}
+                >
+                  <div
+                    className={`w-8 h-8 rounded-full border-2 ${
+                      isSelected ? 'border-indigo-600' : 'border-gray-300'
+                    } ${c === 'White' ? 'shadow-sm' : ''} relative`}
+                    style={{
+                      background: isMulticolor ? hexColor : hexColor,
+                    }}
+                  >
+                    {isSelected && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-white text-lg font-bold drop-shadow-md">✓</span>
+                      </div>
+                    )}
+                  </div>
+                  <span className={`text-xs text-center leading-tight ${
+                    isSelected ? 'font-semibold text-indigo-900' : 'text-gray-600'
+                  }`}>
+                    {c}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {selectedColors.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              <span className="text-xs text-gray-600">Selected:</span>
+              {selectedColors.map((col) => (
+                <span key={col} className="text-xs px-2 py-1 bg-indigo-100 text-indigo-900 rounded-full">
+                  {col}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Pattern Selection */}
+        <div>
+          <Label className="text-base mb-2 block">
+            Pattern (Optional)
+          </Label>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-1">
+            {(['Solid', 'Stripes', 'Checks', 'Plaid', 'Polka Dots', 'Floral', 'Abstract', 'Geometric', 'Corduroy', 'Other'] as ClothingPattern[]).map((p) => {
+              const isSelected = pattern === p;
+              const patternEmojis: Record<ClothingPattern, string> = {
+                'Solid': '⬜',
+                'Stripes': '▦',
+                'Checks': '▦',
+                'Plaid': '▦',
+                'Polka Dots': '⬤',
+                'Floral': '❀',
+                'Abstract': '◆',
+                'Geometric': '◆',
+                'Corduroy': '▥',
+                'Other': '?',
+              };
+              
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPattern(p)}
+                  className={`flex flex-col items-center gap-1 p-3 rounded-lg border-2 transition-all ${
+                    isSelected
+                      ? 'border-indigo-600 bg-indigo-50'
+                      : 'border-gray-300 hover:border-indigo-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <span className="text-2xl">{patternEmojis[p]}</span>
+                  <span className={`text-xs text-center leading-tight ${
+                    isSelected ? 'font-semibold text-indigo-900' : 'text-gray-600'
+                  }`}>
+                    {p}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Additional Details Section */}
+      <div className="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Additional Details</h3>
+        
+        {/* Tags (multi-select) - Organized by Category */}
+        <div>
+          <Label className="text-base mb-2 block">Tags (Optional)</Label>
+          <p className="text-xs text-gray-500 mb-3">Organize your items by occasion, activity, season, style, or comfort</p>
+          
+          <div className="space-y-3">
+            {Object.entries(TAG_CATEGORIES).map(([key, category]) => (
+              <div key={key} className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{category.icon}</span>
+                  <h4 className="text-sm font-medium text-gray-700">{category.label}</h4>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {category.tags.map((tag) => {
+                    const isSelected = selectedTags.includes(tag);
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setSelectedTags(selectedTags.filter(t => t !== tag));
+                          } else {
+                            setSelectedTags([...selectedTags, tag]);
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
+                          isSelected
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-white text-gray-700 border-gray-300 hover:border-indigo-300 hover:bg-indigo-50'
+                        }`}
+                      >
+                        {tag}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+
+            {/* Custom Tags Section */}
+            <div className="space-y-2 pt-2 border-t border-gray-300">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🏷️</span>
+                  <h4 className="text-sm font-medium text-gray-700">Your Custom Tags</h4>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowCustomTagDialog(true)}
+                  className="text-xs"
+                >
+                  + New Tag
+                </Button>
+              </div>
+              
+              {customTags.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {customTags.map((tag) => {
+                    const isSelected = selectedCustomTags.includes(tag);
+                    return (
+                      <div key={tag} className="relative group">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (isSelected) {
+                              setSelectedCustomTags(selectedCustomTags.filter(t => t !== tag));
+                            } else {
+                              setSelectedCustomTags([...selectedCustomTags, tag]);
+                            }
+                          }}
+                          className={`px-3 py-1.5 pr-8 rounded-full text-xs border transition-colors ${
+                            isSelected
+                              ? 'bg-indigo-600 text-white border-indigo-600'
+                              : 'bg-white text-gray-700 border-gray-300 hover:border-indigo-300 hover:bg-indigo-50'
+                          }`}
+                        >
+                          {tag}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm(`Delete custom tag "${tag}"?`)) {
+                              handleDeleteCustomTag(tag);
+                            }
+                          }}
+                          className="absolute right-1 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full hover:bg-red-100 text-gray-500 hover:text-red-600 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Delete tag"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-500 italic">No custom tags yet. Create your first custom tag!</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Formality Level */}
+        <div>
+          <Label className="text-base block mb-2">
+            Formality Level *
+          </Label>
+          <div className="space-y-2">
+            <Slider
+              value={[formalityLevel]}
+              onValueChange={(value: number[]) => setFormalityLevel(value[0] as FormalityLevel)}
+              min={1}
+              max={5}
+              step={1}
+              className="w-full"
+            />
+            <div className="flex justify-between text-xs text-gray-500 px-1">
+              <span>🩴 Very Informal</span>
+              <span className="font-medium text-gray-700 text-base">
+                {formalityLevel === 1 && '🩴 Very Informal'}
+                {formalityLevel === 2 && '👕 Informal'}
+                {formalityLevel === 3 && '👔 Casual'}
+                {formalityLevel === 4 && '🎩 Formal'}
+                {formalityLevel === 5 && '🤵 Very Formal'}
+              </span>
+              <span>🤵 Very Formal</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Notes (Optional) */}
+        <div>
+          <Label htmlFor="notes" className="text-base">
+            Notes (Optional)
+          </Label>
+          <Input
+            id="notes"
+            type="text"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Any additional notes..."
+            className="mt-1"
+          />
+        </div>
       </div>
 
       {/* Action Buttons */}
@@ -790,6 +1083,14 @@ export function AddClothingForm({ onSubmit, onCancel, existingItems = [], defaul
         onOpenChange={setShowAnalysisDialog}
         analysis={analysisResult}
         onSelection={handleSelection}
+      />
+
+      {/* Custom Tag Dialog */}
+      <CustomTagDialog
+        open={showCustomTagDialog}
+        onOpenChange={setShowCustomTagDialog}
+        onCreateTag={handleCreateCustomTag}
+        existingTags={[...customTags, ...Object.values(TAG_CATEGORIES).flatMap(cat => cat.tags)]}
       />
     </form>
   );

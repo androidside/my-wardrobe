@@ -37,23 +37,51 @@ import { storageService } from '@/utils/storage';
 import { BRAND_LIST } from '@/data/brands';
 import { useWardrobeContext } from '@/contexts/WardrobeContext';
 
-// Available tags
+// Available tags - comprehensive list
 const AVAILABLE_TAGS: ClothingTag[] = [
-  'Sportswear',
-  'Gym',
-  'Running',
-  'Outdoor',
-  'Formal',
-  'Casual',
-  'Beach',
-  'Winter',
-  'Summer',
-  'Workout',
+  // Occasion-based
+  'Work/Office',
+  'Formal Event',
+  'Party/Night Out',
+  'Vacation',
   'Travel',
-  'Party',
-  'Business',
-  'Athletic',
-  'Comfort',
+  'Home/Lounge',
+  'Business Casual',
+  'Family Event',
+  'Date Night',
+  // Activity-based
+  'Sport/Active',
+  'Gym/Training',
+  'Yoga/Stretch',
+  'Outdoor',
+  'Swim/Beach',
+  'Winter Sports',
+  'Running',
+  'Cycling',
+  // Season/Weather
+  'Summer',
+  'Winter',
+  'Spring/Fall',
+  'Rainy Day',
+  'Hot Weather',
+  'Cold Weather',
+  // Style/Vibe
+  'Trendy',
+  'Streetwear',
+  'Minimalist',
+  'Bold/Statement',
+  'Classic',
+  'Edgy',
+  'Romantic',
+  'Vintage',
+  'Casual',
+  // Comfort/Fit
+  'Cozy/Comfort',
+  'Stretchy',
+  'Lightweight',
+  'Warm',
+  'Breathable',
+  'Relaxed Fit',
 ];
 
 const COLORS: ClothingColor[] = [
@@ -602,15 +630,15 @@ export function EditClothingDialog({
                 className="w-full"
               />
               <div className="flex justify-between text-xs text-gray-500 px-1">
-                <span>Very Informal</span>
-                <span className="font-medium text-gray-700">
-                  {formalityLevel === 1 && 'Very Informal'}
-                  {formalityLevel === 2 && 'Informal'}
-                  {formalityLevel === 3 && 'Casual'}
-                  {formalityLevel === 4 && 'Formal'}
-                  {formalityLevel === 5 && 'Very Formal'}
+                <span>🩴 Very Informal</span>
+                <span className="font-medium text-gray-700 text-base">
+                  {formalityLevel === 1 && '🩴 Very Informal'}
+                  {formalityLevel === 2 && '👕 Informal'}
+                  {formalityLevel === 3 && '👔 Casual'}
+                  {formalityLevel === 4 && '🎩 Formal'}
+                  {formalityLevel === 5 && '🤵 Very Formal'}
                 </span>
-                <span>Very Formal</span>
+                <span>🤵 Very Formal</span>
               </div>
             </div>
           </div>

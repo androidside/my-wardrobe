@@ -33,29 +33,71 @@ const TYPE_EMOJIS: Record<string, string> = {
 const getTypeIconPath = (type: string): string => {
   // Map clothing type to file name (handle special cases)
   const fileNameMap: Record<string, string> = {
+    // TOPS
     'T-shirt': 'tshirt',
     'Shirt': 'shirt',
-    'Jacket': 'jacket',
-    'Coat': 'coat',
     'Sweater': 'sweater',
     'Hoodie': 'hoodie',
+    'Tank Top': 'tank_top',
+    'Polo': 'polo',
+    'Blouse': 'blouse',
+    'Tunic': 'tunic',
+    'Crop Top': 'crop_top',
+    'Long Sleeve': 'long_sleeve',
+    
+    // BOTTOMS
     'Pants': 'pants',
     'Jeans': 'jeans',
     'Shorts': 'shorts',
     'Skirt': 'skirt',
     'Dress': 'dress',
-    'Shoes': 'shoes',
+    'Leggings': 'leggings',
+    'Sweatpants': 'sweatpants',
+    'Chinos': 'chinos',
+    'Cargo Pants': 'cargo_pants',
+    
+    // FOOTWEAR
     'Sneakers': 'sneakers',
+    'Shoes': 'shoes',
     'Boots': 'boots',
     'Sandals': 'sandals',
+    'Slippers': 'slippers',
+    'Loafers': 'loafers',
+    'Heels': 'heels',
+    'Flats': 'flats',
+    'Running Shoes': 'running_shoes',
+    
+    // OUTERWEAR
+    'Jacket': 'jacket',
+    'Coat': 'coat',
+    'Blazer': 'blazer',
+    'Vest': 'vest',
+    'Cardigan': 'cardigan',
+    'Windbreaker': 'windbreaker',
+    'Parka': 'parka',
+    'Bomber': 'bomber',
+    'Trench Coat': 'trench_coat',
+    
+    // ACCESSORIES
     'Hat': 'hat',
     'Socks': 'socks',
     'Underwear': 'underwear',
+    'Belt': 'belt',
+    'Watch': 'watch',
+    'Scarf': 'scarf',
+    'Gloves': 'gloves',
+    'Bag': 'bag',
+    'Wallet': 'wallet',
+    'Jewelry': 'jewelry',
     'Accessories': 'accessories',
+    
+    // DEFAULT
     'Other': 'other',
   };
   
-  return `/icons/clothing/${fileNameMap[type]}.png`;
+  // Return the icon path, or fallback to 'other' if not found
+  const fileName = fileNameMap[type] || 'other';
+  return `/icons/clothing/${fileName}.png`;
 };
 
 // Color mapping for filter pills

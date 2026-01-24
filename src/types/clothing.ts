@@ -24,23 +24,51 @@ export type ClothingType =
 // New hierarchical structure
 export type ClothingCategory = 'Tops' | 'Bottoms' | 'Footwear' | 'Outerwear' | 'Accessories';
 
-// Clothing tags for additional metadata
+// Clothing tags for additional metadata - Organized by category
 export type ClothingTag =
-  | 'Sportswear'
-  | 'Gym'
-  | 'Running'
-  | 'Outdoor'
-  | 'Formal'
-  | 'Casual'
-  | 'Beach'
-  | 'Winter'
-  | 'Summer'
-  | 'Workout'
+  // Occasion-based
+  | 'Work/Office'
+  | 'Formal Event'
+  | 'Party/Night Out'
+  | 'Vacation'
   | 'Travel'
-  | 'Party'
-  | 'Business'
-  | 'Athletic'
-  | 'Comfort';
+  | 'Home/Lounge'
+  | 'Business Casual'
+  | 'Family Event'
+  | 'Date Night'
+  // Activity-based
+  | 'Sport/Active'
+  | 'Gym/Training'
+  | 'Yoga/Stretch'
+  | 'Outdoor'
+  | 'Swim/Beach'
+  | 'Winter Sports'
+  | 'Running'
+  | 'Cycling'
+  // Season/Weather
+  | 'Summer'
+  | 'Winter'
+  | 'Spring/Fall'
+  | 'Rainy Day'
+  | 'Hot Weather'
+  | 'Cold Weather'
+  // Style/Vibe
+  | 'Trendy'
+  | 'Streetwear'
+  | 'Minimalist'
+  | 'Bold/Statement'
+  | 'Classic'
+  | 'Edgy'
+  | 'Romantic'
+  | 'Vintage'
+  | 'Casual'
+  // Comfort/Fit
+  | 'Cozy/Comfort'
+  | 'Stretchy'
+  | 'Lightweight'
+  | 'Warm'
+  | 'Breathable'
+  | 'Relaxed Fit';
 
 // Types organized by category
 export const CLOTHING_TYPES_BY_CATEGORY: Record<ClothingCategory, string[]> = {

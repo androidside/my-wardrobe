@@ -22,6 +22,9 @@ export interface UserProfile {
     allowDirectFollow: boolean; // If true, users can follow directly; if false, requires approval
   };
   
+  // Custom Tags (user-created tags for clothing items)
+  customTags?: string[]; // Array of custom tag names created by the user
+  
   // Size Information
   shoeSize?: string; // EU shoe size string from SHOE_SIZES
   pantsSizeUs?: string; // numeric or string (US sizing)
