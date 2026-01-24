@@ -1,9 +1,6 @@
 import { useState, useCallback } from 'react';
 import Cropper from 'react-easy-crop';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { RotateCw, RotateCcw, Check, X } from 'lucide-react';
 
 interface ImageEditorProps {
@@ -20,20 +17,10 @@ interface Area {
   height: number;
 }
 
-type AspectRatio = '1:1' | '4:3' | '16:9' | 'original';
-
-const ASPECT_RATIO_MAP: Record<AspectRatio, number | undefined> = {
-  '1:1': 1,
-  '4:3': 4 / 3,
-  '16:9': 16 / 9,
-  'original': undefined,
-};
-
 export function ImageEditor({ imageUrl, open, onClose, onSave }: ImageEditorProps) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
-  const [aspectRatio, setAspectRatio] = useState<AspectRatio>('1:1');
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -137,8 +124,8 @@ export function ImageEditor({ imageUrl, open, onClose, onSave }: ImageEditorProp
   const handleSave = async () => {
     setIsProcessing(true);
     try {
-      // If "original" is selected, return full image with rotation only (no crop)
-      if (aspectRatio === 'original') {
+      // If no crop area is set, return full image with rotation
+      if (!croppedAreaPixels) {
         const image = await createImage(imageUrl);
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -189,53 +176,6 @@ export function ImageEditor({ imageUrl, open, onClose, onSave }: ImageEditorProp
         return;
       }
 
-      // For cropped aspect ratios, ensure we have crop area
-      if (!croppedAreaPixels) {
-        // Fallback: return original image with rotation
-        if (rotation === 0) {
-          const response = await fetch(imageUrl);
-          const blob = await response.blob();
-          onSave(blob);
-        } else {
-          const image = await createImage(imageUrl);
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-
-          if (!ctx) {
-            const response = await fetch(imageUrl);
-            const blob = await response.blob();
-            onSave(blob);
-            onClose();
-            return;
-          }
-
-          const rotRad = getRadianAngle(rotation);
-          const { width: bBoxWidth, height: bBoxHeight } = rotateSize(
-            image.width,
-            image.height,
-            rotation
-          );
-
-          canvas.width = bBoxWidth;
-          canvas.height = bBoxHeight;
-
-          ctx.translate(bBoxWidth / 2, bBoxHeight / 2);
-          ctx.rotate(rotRad);
-          ctx.translate(-image.width / 2, -image.height / 2);
-          ctx.drawImage(image, 0, 0);
-
-          canvas.toBlob((blob) => {
-            if (blob) {
-              onSave(blob);
-            } else {
-              fetch(imageUrl).then(res => res.blob()).then(onSave);
-            }
-            onClose();
-          }, 'image/jpeg', 0.95);
-        }
-        return;
-      }
-
       // Crop and rotate the image
       const croppedImage = await getCroppedImg(
         imageUrl,
@@ -265,156 +205,82 @@ export function ImageEditor({ imageUrl, open, onClose, onSave }: ImageEditorProp
     setCrop({ x: 0, y: 0 });
     setZoom(1);
     setRotation(0);
-    setAspectRatio('1:1');
     setCroppedAreaPixels(null);
     onClose();
   };
 
   return (
     <Dialog open={open} onOpenChange={handleCancel}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Edit Image</DialogTitle>
-        </DialogHeader>
+      <DialogContent 
+        className="max-w-full w-full h-full max-h-full m-0 p-0 rounded-none flex flex-col"
+        hideCloseButton
+      >
+        {/* Full-screen crop area */}
+        <div className="relative flex-1 bg-black">
+          <Cropper
+            image={imageUrl}
+            crop={crop}
+            zoom={zoom}
+            rotation={rotation}
+            aspect={undefined} // Free-form crop (no fixed aspect ratio)
+            onCropChange={setCrop}
+            onZoomChange={setZoom}
+            onCropComplete={onCropComplete}
+            cropShape="rect"
+            showGrid={true}
+            style={{
+              containerStyle: {
+                width: '100%',
+                height: '100%',
+              },
+            }}
+          />
+        </div>
 
-        <div className="space-y-4">
-          {/* Aspect Ratio Selection */}
-          <div>
-            <Label htmlFor="aspect-ratio" className="text-sm font-medium text-gray-700 mb-2 block">
-              Aspect Ratio
-            </Label>
-            <Select
-              value={aspectRatio}
-              onValueChange={(value) => {
-                setAspectRatio(value as AspectRatio);
-                // Reset crop position when aspect ratio changes
-                setCrop({ x: 0, y: 0 });
-                setZoom(1);
-              }}
-            >
-              <SelectTrigger id="aspect-ratio" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1:1">Square (1:1)</SelectItem>
-                <SelectItem value="4:3">Standard (4:3)</SelectItem>
-                <SelectItem value="16:9">Widescreen (16:9)</SelectItem>
-                <SelectItem value="original">Original (No Crop)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Image Cropper */}
-          {aspectRatio === 'original' ? (
-            <div className="relative w-full bg-gray-900 rounded-lg overflow-hidden flex items-center justify-center" style={{ minHeight: '300px', height: '400px', maxHeight: '60vh' }}>
-              <div className="relative max-w-full max-h-full">
-                <img
-                  src={imageUrl}
-                  alt="Preview"
-                  className="max-w-full max-h-full object-contain"
-                  style={{
-                    transform: `rotate(${rotation}deg)`,
-                    transition: 'transform 0.3s ease',
-                  }}
-                />
-                {rotation !== 0 && (
-                  <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-3 py-1 rounded text-sm">
-                    Rotated {rotation % 360}°
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="relative w-full bg-gray-900 rounded-lg overflow-hidden" style={{ minHeight: '300px', height: '400px', maxHeight: '60vh' }}>
-              <Cropper
-                image={imageUrl}
-                crop={crop}
-                zoom={zoom}
-                rotation={rotation}
-                aspect={ASPECT_RATIO_MAP[aspectRatio]}
-                onCropChange={setCrop}
-                onZoomChange={setZoom}
-                onCropComplete={onCropComplete}
-                cropShape="rect"
-                showGrid={true}
-              />
-            </div>
-          )}
-
-          {/* Controls */}
-          <div className="space-y-4">
-            {/* Zoom Control - Only show when not in original mode */}
-            {aspectRatio !== 'original' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Zoom: {Math.round(zoom * 100)}%
-                </label>
-                <input
-                  type="range"
-                  min={1}
-                  max={3}
-                  step={0.1}
-                  value={zoom}
-                  onChange={(e) => setZoom(Number(e.target.value))}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                />
-              </div>
-            )}
-
-            {/* Rotation Controls */}
-            <div className="flex items-center justify-center gap-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => rotateImage('left')}
-                className="flex items-center gap-2"
-              >
-                <RotateCcw className="h-4 w-4" />
-                Rotate Left
-              </Button>
-              <span className="text-sm text-gray-600 min-w-[60px] text-center">
-                {((rotation % 360) + 360) % 360}°
-              </span>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => rotateImage('right')}
-                className="flex items-center gap-2"
-              >
-                <RotateCw className="h-4 w-4" />
-                Rotate Right
-              </Button>
-            </div>
-
-            {aspectRatio === 'original' && (
-              <div className="text-sm text-gray-600 text-center bg-blue-50 border border-blue-200 rounded-md p-3">
-                <p className="font-medium text-blue-900">Original Image Mode</p>
-                <p className="text-xs text-blue-700 mt-1">The full image will be saved. You can still rotate it if needed.</p>
-              </div>
-            )}
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-3 pt-4 border-t">
-            <Button
-              type="button"
-              variant="outline"
+        {/* Bottom toolbar - Single line with 4 icons */}
+        <div className="bg-white border-t border-gray-200 px-4 py-3 safe-bottom">
+          <div className="flex items-center justify-around max-w-lg mx-auto">
+            {/* Cancel */}
+            <button
               onClick={handleCancel}
-              className="flex-1"
               disabled={isProcessing}
+              className="flex flex-col items-center gap-1 px-4 py-2 text-gray-700 hover:text-gray-900 disabled:opacity-50 transition-colors"
             >
-              <X className="h-4 w-4 mr-2" />
-              Cancel
-            </Button>
-            <Button
-              type="button"
+              <X className="h-6 w-6" />
+              <span className="text-xs font-medium">Cancel</span>
+            </button>
+
+            {/* Rotate Left */}
+            <button
+              onClick={() => rotateImage('left')}
+              disabled={isProcessing}
+              className="flex flex-col items-center gap-1 px-4 py-2 text-gray-700 hover:text-gray-900 disabled:opacity-50 transition-colors"
+            >
+              <RotateCcw className="h-6 w-6" />
+              <span className="text-xs font-medium">Rotate Left</span>
+            </button>
+
+            {/* Rotate Right */}
+            <button
+              onClick={() => rotateImage('right')}
+              disabled={isProcessing}
+              className="flex flex-col items-center gap-1 px-4 py-2 text-gray-700 hover:text-gray-900 disabled:opacity-50 transition-colors"
+            >
+              <RotateCw className="h-6 w-6" />
+              <span className="text-xs font-medium">Rotate Right</span>
+            </button>
+
+            {/* Choose/Done */}
+            <button
               onClick={handleSave}
-              className="flex-1"
               disabled={isProcessing}
+              className="flex flex-col items-center gap-1 px-4 py-2 text-blue-600 hover:text-blue-700 disabled:opacity-50 transition-colors font-semibold"
             >
-              <Check className="h-4 w-4 mr-2" />
-              {isProcessing ? 'Processing...' : 'Save'}
-            </Button>
+              <Check className="h-6 w-6" />
+              <span className="text-xs font-medium">
+                {isProcessing ? 'Processing...' : 'Choose'}
+              </span>
+            </button>
           </div>
         </div>
       </DialogContent>
