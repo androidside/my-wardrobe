@@ -28,9 +28,24 @@ export function PhotoCapture({ onPhotoCapture, initialPreview, onAnalysisComplet
     hasOnAnalysisStart: !!onAnalysisStart,
   });
 
+  // Check if getUserMedia is available (requires HTTPS or localhost)
+  const isGetUserMediaAvailable = () => {
+    return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  };
+
   // Start camera with flash OFF
   const startCamera = async () => {
     try {
+      // Check if getUserMedia is available
+      if (!isGetUserMediaAvailable()) {
+        console.warn('[PhotoCapture] getUserMedia not available (requires HTTPS)');
+        alert('Camera API requires secure connection. Using file picker instead.');
+        setShowCamera(false);
+        // Fallback to file input
+        handleFileUpload();
+        return;
+      }
+
       const constraints: MediaStreamConstraints = {
         video: {
           facingMode: facingMode,
@@ -59,10 +74,25 @@ export function PhotoCapture({ onPhotoCapture, initialPreview, onAnalysisComplet
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[PhotoCapture] Camera access error:', error);
-      alert('Unable to access camera. Please check permissions or use file upload instead.');
+      
+      let errorMessage = 'Unable to access camera. ';
+      if (error.name === 'NotAllowedError') {
+        errorMessage += 'Camera permission denied. Please grant permission in your browser settings.';
+      } else if (error.name === 'NotFoundError') {
+        errorMessage += 'No camera found on this device.';
+      } else if (error.name === 'NotReadableError') {
+        errorMessage += 'Camera is already in use by another app.';
+      } else {
+        errorMessage += 'Please try using file upload instead.';
+      }
+      
+      alert(errorMessage);
       setShowCamera(false);
+      
+      // Fallback to file input
+      setTimeout(() => handleFileUpload(), 100);
     }
   };
 
@@ -210,6 +240,19 @@ export function PhotoCapture({ onPhotoCapture, initialPreview, onAnalysisComplet
   };
 
   const handleOpenCamera = () => {
+    // If getUserMedia is not available (HTTP connection), use file input with capture
+    if (!isGetUserMediaAvailable()) {
+      console.warn('[PhotoCapture] getUserMedia not available, using file input with capture');
+      // Use file input with capture attribute as fallback
+      if (fileInputRef.current) {
+        // Temporarily add capture attribute
+        fileInputRef.current.setAttribute('capture', 'environment');
+        fileInputRef.current.click();
+      }
+      return;
+    }
+    
+    // Use custom camera with flash control
     setShowCamera(true);
   };
 
@@ -220,6 +263,8 @@ export function PhotoCapture({ onPhotoCapture, initialPreview, onAnalysisComplet
 
   const handleFileUpload = () => {
     if (fileInputRef.current) {
+      // Remove capture attribute for file upload (gallery selection)
+      fileInputRef.current.removeAttribute('capture');
       fileInputRef.current.click();
     }
   };
