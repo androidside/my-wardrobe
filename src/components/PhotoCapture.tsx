@@ -143,11 +143,12 @@ export function PhotoCapture({ onPhotoCapture, initialPreview, onAnalysisComplet
 
   return (
     <div className="space-y-4">
-      {/* Hidden file input */}
+      {/* Hidden file input with native camera capture */}
       <input
         ref={fileInputRef}
         type="file"
         accept="image/*"
+        capture="environment"
         onChange={handleFileChange}
         className="hidden"
       />
