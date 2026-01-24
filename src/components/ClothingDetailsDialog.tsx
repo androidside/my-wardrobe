@@ -128,7 +128,7 @@ export function ClothingDetailsDialog({ item, open, onOpenChange, onEdit, onDele
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" hideCloseButton>
         {/* Accessible title and description for screen readers */}
         <DialogTitle className="sr-only">
           {item ? `${item.brand} ${item.type}` : 'Clothing Item Details'}
