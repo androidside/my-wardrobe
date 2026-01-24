@@ -3,6 +3,8 @@ import { Edit, Trash2, ArrowLeft } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ClothingItem, ClothingColor } from '@/types/clothing';
@@ -127,6 +129,14 @@ export function ClothingDetailsDialog({ item, open, onOpenChange, onEdit, onDele
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        {/* Accessible title and description for screen readers */}
+        <DialogTitle className="sr-only">
+          {item ? `${item.brand} ${item.type}` : 'Clothing Item Details'}
+        </DialogTitle>
+        <DialogDescription className="sr-only">
+          {item ? `View details for ${item.brand} ${item.type} - Size ${item.size}, ${item.color}` : 'View clothing item details'}
+        </DialogDescription>
+        
         {item ? (
           <div className="space-y-0">
             {/* Header with Actions */}
