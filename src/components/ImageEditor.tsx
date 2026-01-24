@@ -1,5 +1,6 @@
-import { useState, useCallback } from 'react';
-import Cropper from 'react-easy-crop';
+import { useState, useRef } from 'react';
+import { Cropper, CropperRef } from 'react-advanced-cropper';
+import 'react-advanced-cropper/dist/style.css';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { RotateCw, RotateCcw, Check, X } from 'lucide-react';
 
@@ -10,187 +11,82 @@ interface ImageEditorProps {
   onSave: (croppedImageBlob: Blob) => void;
 }
 
-interface Area {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
 export function ImageEditor({ imageUrl, open, onClose, onSave }: ImageEditorProps) {
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
+  const cropperRef = useRef<CropperRef>(null);
   const [rotation, setRotation] = useState(0);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-
-  const onCropComplete = useCallback((_croppedArea: Area, croppedAreaPixels: Area) => {
-    setCroppedAreaPixels(croppedAreaPixels);
-  }, []);
 
   const rotateImage = (direction: 'left' | 'right') => {
     setRotation((prev) => (direction === 'right' ? prev + 90 : prev - 90));
   };
 
-  const createImage = (url: string): Promise<HTMLImageElement> =>
-    new Promise((resolve, reject) => {
-      const image = new Image();
-      image.addEventListener('load', () => resolve(image));
-      image.addEventListener('error', (error) => reject(error));
-      image.src = url;
-    });
-
-  const getRadianAngle = (degreeValue: number) => {
-    return (degreeValue * Math.PI) / 180;
-  };
-
-  const rotateSize = (width: number, height: number, rotation: number) => {
-    const rotRad = getRadianAngle(rotation);
-    return {
-      width: Math.abs(Math.cos(rotRad) * width) + Math.abs(Math.sin(rotRad) * height),
-      height: Math.abs(Math.sin(rotRad) * width) + Math.abs(Math.cos(rotRad) * height),
-    };
-  };
-
-  const getCroppedImg = async (
-    imageSrc: string,
-    pixelCrop: Area,
-    rotation = 0
-  ): Promise<Blob> => {
-    const image = await createImage(imageSrc);
-    
-    const rotRad = getRadianAngle(rotation);
-    const { width: bBoxWidth, height: bBoxHeight } = rotateSize(
-      image.width,
-      image.height,
-      rotation
-    );
-
-    // Step 1: Rotate the full image
-    const rotatedCanvas = document.createElement('canvas');
-    rotatedCanvas.width = bBoxWidth;
-    rotatedCanvas.height = bBoxHeight;
-    const rotatedCtx = rotatedCanvas.getContext('2d');
-
-    if (!rotatedCtx) {
-      throw new Error('No 2d context for rotated canvas');
-    }
-
-    rotatedCtx.translate(bBoxWidth / 2, bBoxHeight / 2);
-    rotatedCtx.rotate(rotRad);
-    rotatedCtx.drawImage(image, -image.width / 2, -image.height / 2);
-
-    // Step 2: Crop from rotated image
-    const cropX = Math.max(0, Math.min(Math.round(pixelCrop.x), rotatedCanvas.width));
-    const cropY = Math.max(0, Math.min(Math.round(pixelCrop.y), rotatedCanvas.height));
-    const cropWidth = Math.min(pixelCrop.width, rotatedCanvas.width - cropX);
-    const cropHeight = Math.min(pixelCrop.height, rotatedCanvas.height - cropY);
-
-    const imageData = rotatedCtx.getImageData(cropX, cropY, cropWidth, cropHeight);
-
-    // Step 3: Create final canvas with cropped image
-    const finalCanvas = document.createElement('canvas');
-    finalCanvas.width = cropWidth;
-    finalCanvas.height = cropHeight;
-    const finalCtx = finalCanvas.getContext('2d');
-
-    if (!finalCtx) {
-      throw new Error('No 2d context for final canvas');
-    }
-
-    finalCtx.putImageData(imageData, 0, 0);
-
-    // Convert to blob
-    return new Promise((resolve, reject) => {
-      finalCanvas.toBlob((blob) => {
-        if (blob) {
-          resolve(blob);
-        } else {
-          reject(new Error('Canvas to blob conversion failed'));
-        }
-      }, 'image/jpeg', 0.95);
-    });
-  };
-
   const handleSave = async () => {
     setIsProcessing(true);
     try {
-      if (!croppedAreaPixels) {
-        // Fallback: return original image with rotation
-        if (rotation === 0) {
-          const response = await fetch(imageUrl);
-          const blob = await response.blob();
-          onSave(blob);
-        } else {
-          const image = await createImage(imageUrl);
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
+      const cropper = cropperRef.current;
+      if (!cropper) {
+        throw new Error('Cropper ref not available');
+      }
 
-          if (!ctx) {
-            const response = await fetch(imageUrl);
-            const blob = await response.blob();
+      // Get the canvas with the cropped and rotated image
+      const canvas = cropper.getCanvas({
+        height: 2048, // Max height for good quality
+        width: 2048,  // Max width for good quality
+      });
+
+      if (!canvas) {
+        throw new Error('Failed to get canvas from cropper');
+      }
+
+      // Apply rotation if needed
+      let finalCanvas = canvas;
+      if (rotation !== 0) {
+        const rotatedCanvas = document.createElement('canvas');
+        const ctx = rotatedCanvas.getContext('2d');
+        
+        if (!ctx) {
+          throw new Error('Failed to get canvas context');
+        }
+
+        // Calculate rotated dimensions
+        const angle = (rotation * Math.PI) / 180;
+        const cos = Math.abs(Math.cos(angle));
+        const sin = Math.abs(Math.sin(angle));
+        
+        rotatedCanvas.width = canvas.width * cos + canvas.height * sin;
+        rotatedCanvas.height = canvas.width * sin + canvas.height * cos;
+
+        // Rotate and draw
+        ctx.translate(rotatedCanvas.width / 2, rotatedCanvas.height / 2);
+        ctx.rotate(angle);
+        ctx.drawImage(canvas, -canvas.width / 2, -canvas.height / 2);
+
+        finalCanvas = rotatedCanvas;
+      }
+
+      // Convert to blob
+      finalCanvas.toBlob(
+        (blob) => {
+          if (blob) {
             onSave(blob);
             onClose();
-            return;
+          } else {
+            throw new Error('Failed to create blob from canvas');
           }
-
-          const rotRad = getRadianAngle(rotation);
-          const { width: bBoxWidth, height: bBoxHeight } = rotateSize(
-            image.width,
-            image.height,
-            rotation
-          );
-
-          canvas.width = bBoxWidth;
-          canvas.height = bBoxHeight;
-
-          ctx.translate(bBoxWidth / 2, bBoxHeight / 2);
-          ctx.rotate(rotRad);
-          ctx.translate(-image.width / 2, -image.height / 2);
-          ctx.drawImage(image, 0, 0);
-
-          canvas.toBlob((blob) => {
-            if (blob) {
-              onSave(blob);
-            } else {
-              fetch(imageUrl).then(res => res.blob()).then(onSave);
-            }
-            onClose();
-          }, 'image/jpeg', 0.95);
-        }
-        return;
-      }
-
-      // Crop and rotate the image
-      const croppedImage = await getCroppedImg(
-        imageUrl,
-        croppedAreaPixels,
-        rotation
+        },
+        'image/jpeg',
+        0.95
       );
-      onSave(croppedImage);
-      onClose();
     } catch (error) {
       console.error('Error processing image:', error);
-      alert('Failed to process image. Using original image.');
-      // Fallback to original image
-      try {
-        const response = await fetch(imageUrl);
-        const blob = await response.blob();
-        onSave(blob);
-      } catch (fetchError) {
-        console.error('Failed to fetch original image:', fetchError);
-      }
-      onClose();
+      alert('Failed to process image. Please try again.');
     } finally {
       setIsProcessing(false);
     }
   };
 
   const handleCancel = () => {
-    setCrop({ x: 0, y: 0 });
-    setZoom(1);
     setRotation(0);
-    setCroppedAreaPixels(null);
     onClose();
   };
 
@@ -203,23 +99,52 @@ export function ImageEditor({ imageUrl, open, onClose, onSave }: ImageEditorProp
         {/* Fullscreen layout */}
         <div className="flex flex-col h-full w-full bg-black">
           {/* Crop area - takes all available space */}
-          <div className="flex-1 relative">
+          <div className="flex-1 relative min-h-0">
             <Cropper
-              image={imageUrl}
-              crop={crop}
-              zoom={zoom}
-              rotation={rotation}
-              aspect={undefined} // Free-form crop
-              onCropChange={setCrop}
-              onZoomChange={setZoom}
-              onCropComplete={onCropComplete}
-              cropShape="rect"
-              showGrid={true}
-              style={{
-                containerStyle: {
-                  backgroundColor: '#000',
-                },
+              ref={cropperRef}
+              src={imageUrl}
+              className="h-full w-full"
+              
+              // Start with full image selected
+              defaultSize={({ imageSize, visibleArea }) => {
+                return {
+                  width: (visibleArea || imageSize).width,
+                  height: (visibleArea || imageSize).height,
+                };
               }}
+              
+              // Configure stencil (crop box) behavior
+              stencilProps={{
+                // Show grid for alignment
+                grid: true,
+                
+                // Configure handlers behavior
+                handlers: {
+                  // Corners: maintain aspect ratio
+                  eastNorth: true,
+                  eastSouth: true,
+                  westNorth: true,
+                  westSouth: true,
+                  
+                  // Edges: free aspect ratio
+                  north: true,
+                  south: true,
+                  east: true,
+                  west: true,
+                },
+                
+                // Allow moving the crop box
+                movable: true,
+                
+                // Allow resizing
+                resizable: true,
+                
+                // Lines for grid
+                lines: {},
+              }}
+              
+              // Background styling
+              backgroundClassName="bg-black"
             />
           </div>
 
