@@ -41,6 +41,7 @@ function AppContent() {
   // Wardrobe state - filter by current wardrobe
   // Key the hook by wardrobeId to force re-initialization when switching wardrobes
   console.log('[App] Render - currentWardrobeId:', currentWardrobeId);
+  // Pass "all" to the hook if that's selected, otherwise use the current wardrobeId
   const wardrobeIdForHook = currentWardrobeId || undefined;
   console.log('[App] Passing wardrobeId to useWardrobe:', wardrobeIdForHook);
   const { items, loading, error, addItem, updateItem, deleteItem, refresh: refreshItems } = useWardrobe(wardrobeIdForHook);
@@ -124,7 +125,7 @@ function AppContent() {
   // Note: useWardrobes hook automatically creates "Wardrobe 1" if none exists
   useEffect(() => {
     const migrateExistingItems = async () => {
-      if (!user || migrationDone || wardrobesLoading || !currentWardrobeId) return;
+      if (!user || migrationDone || wardrobesLoading || !currentWardrobeId || currentWardrobeId === 'all') return;
 
       try {
         // Get all items without wardrobeId
@@ -215,7 +216,9 @@ function AppContent() {
 
   // Get current wardrobe name
   const currentWardrobe = wardrobes.find(w => w.id === currentWardrobeId);
-  const currentWardrobeName = currentWardrobe?.name || 'Current Wardrobe';
+  const currentWardrobeName = currentWardrobeId === 'all' 
+    ? 'All Wardrobes' 
+    : currentWardrobe?.name || 'Current Wardrobe';
 
   return (
     <div className="min-h-screen bg-gray-50">
