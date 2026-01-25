@@ -83,6 +83,7 @@ const getTypeIconPath = (type: string): string => {
     'Socks': 'socks',
     'Underwear': 'underwear',
     'Belt': 'belt',
+    'Tie': 'tie',
     'Watch': 'watch',
     'Scarf': 'scarf',
     'Gloves': 'gloves',

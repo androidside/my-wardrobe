@@ -101,6 +101,7 @@ function matchClothingType(labels: string[]): { category: ClothingCategory; type
     { keywords: ['scarf', 'scarves', 'neck scarf', 'muffler'], type: 'Scarf', priority: 7 },
     { keywords: ['glove', 'gloves', 'mitten', 'mittens', 'hand warmer'], type: 'Gloves', priority: 7 },
     { keywords: ['belt', 'waist belt', 'leather belt'], type: 'Belt', priority: 7 },
+    { keywords: ['tie', 'necktie', 'neck tie', 'bow tie', 'bowtie'], type: 'Tie', priority: 7 },
     { keywords: ['bag', 'handbag', 'purse', 'backpack', 'tote', 'satchel', 'clutch'], type: 'Bag', priority: 7 },
     { keywords: ['wallet', 'billfold', 'purse', 'card holder'], type: 'Wallet', priority: 7 },
     { keywords: ['watch', 'wristwatch', 'timepiece', 'wrist watch'], type: 'Watch', priority: 7 },

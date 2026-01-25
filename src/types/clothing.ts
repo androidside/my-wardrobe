@@ -76,7 +76,7 @@ export const CLOTHING_TYPES_BY_CATEGORY: Record<ClothingCategory, string[]> = {
   Bottoms: ['Pants', 'Jeans', 'Shorts', 'Skirt', 'Leggings', 'Sweatpants', 'Chinos', 'Cargo Pants', 'Dress'],
   Footwear: ['Sneakers', 'Shoes', 'Boots', 'Sandals', 'Slippers', 'Loafers', 'Heels', 'Flats', 'Running Shoes'],
   Outerwear: ['Jacket', 'Coat', 'Blazer', 'Vest', 'Cardigan', 'Windbreaker', 'Parka', 'Bomber', 'Trench Coat'],
-  Accessories: ['Hat', 'Socks', 'Underwear', 'Belt', 'Watch', 'Scarf', 'Gloves', 'Bag', 'Wallet', 'Jewelry'],
+  Accessories: ['Hat', 'Socks', 'Underwear', 'Belt', 'Tie', 'Watch', 'Scarf', 'Gloves', 'Bag', 'Wallet', 'Jewelry'],
 };
 
 // Get all types as a flat array (for backward compatibility)
