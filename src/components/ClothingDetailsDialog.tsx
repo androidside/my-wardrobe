@@ -269,20 +269,12 @@ export function ClothingDetailsDialog({ item, open, onOpenChange, onEdit, onDele
               </div>
 
               {/* Category */}
-              <div className="flex items-center justify-between py-2 border-b border-gray-200">
+              <div className="flex items-center justify-between py-2">
                 <span className="text-sm text-gray-600">Category:</span>
                 <span className="text-sm font-medium text-gray-900">
                   {item.category || getCategoryForType(item.type)}
                 </span>
               </div>
-
-              {/* Wardrobe */}
-              {item.wardrobeId && (
-                <div className="flex items-center justify-between py-2">
-                  <span className="text-sm text-gray-600">Wardrobe:</span>
-                  <span className="text-sm font-medium text-gray-900">{item.wardrobeId}</span>
-                </div>
-              )}
             </div>
 
             {/* Tags Section */}

@@ -44,8 +44,10 @@ export function useWardrobe(wardrobeId?: string) {
         // Clear items first when switching wardrobes
         setItems([]);
         
-        console.log('[useWardrobe] Loading items for wardrobeId:', effectWardrobeId);
-        const loadedItems = await wardrobeStorageService.getAllItems(user.uid, effectWardrobeId);
+        // If "all" is selected, fetch items without wardrobe filter
+        const wardrobeFilter = effectWardrobeId === 'all' ? undefined : effectWardrobeId;
+        console.log('[useWardrobe] Loading items for wardrobeId:', effectWardrobeId, 'filter:', wardrobeFilter);
+        const loadedItems = await wardrobeStorageService.getAllItems(user.uid, wardrobeFilter);
         console.log('[useWardrobe] Loaded', loadedItems.length, 'items for wardrobe:', effectWardrobeId);
         if (loadedItems.length > 0) {
           console.log('[useWardrobe] Sample item wardrobeIds:', loadedItems.slice(0, 3).map(i => ({ id: i.id, wardrobeId: i.wardrobeId })));
@@ -102,7 +104,10 @@ export function useWardrobe(wardrobeId?: string) {
       setError(null);
       // Clear items first when switching wardrobes
       setItems([]);
-      const loadedItems = await wardrobeStorageService.getAllItems(user.uid, idToUse);
+      
+      // If "all" is selected, fetch items without wardrobe filter
+      const wardrobeFilter = idToUse === 'all' ? undefined : idToUse;
+      const loadedItems = await wardrobeStorageService.getAllItems(user.uid, wardrobeFilter);
       console.log('[useWardrobe] loadItems loaded', loadedItems.length, 'items for wardrobe:', idToUse);
       
       // Only set items if we're still loading for the same wardrobe
@@ -133,10 +138,11 @@ export function useWardrobe(wardrobeId?: string) {
       try {
         setError(null);
         // Use provided itemWardrobeId or fall back to current wardrobeId
-        const targetWardrobeId = itemWardrobeId || wardrobeId;
+        // If wardrobeId is "all", itemWardrobeId must be provided
+        const targetWardrobeId = itemWardrobeId || (wardrobeId !== 'all' ? wardrobeId : undefined);
         const newItem = await wardrobeStorageService.saveItem(user.uid, input, targetWardrobeId);
-        // Only add to items if it belongs to current wardrobe
-        if (!wardrobeId || newItem.wardrobeId === wardrobeId) {
+        // Add to items if viewing "all" or if it belongs to current wardrobe
+        if (wardrobeId === 'all' || !wardrobeId || newItem.wardrobeId === wardrobeId) {
           setItems((prev) => [...prev, newItem]);
         }
         return newItem;
@@ -159,12 +165,17 @@ export function useWardrobe(wardrobeId?: string) {
         setError(null);
         const updatedItem = await wardrobeStorageService.updateItem(user.uid, id, updates, newWardrobeId);
         
-        // If wardrobe changed, remove from current list (it will appear in the new wardrobe)
-        if (newWardrobeId && newWardrobeId !== wardrobeId) {
-          setItems((prev) => prev.filter((item) => item.id !== id));
-        } else {
-          // Otherwise, update in place
+        // If viewing "all", always update in place (we see all wardrobes)
+        if (wardrobeId === 'all') {
           setItems((prev) => prev.map((item) => (item.id === id ? updatedItem : item)));
+        } else {
+          // If wardrobe changed and not viewing "all", remove from current list
+          if (newWardrobeId && newWardrobeId !== wardrobeId) {
+            setItems((prev) => prev.filter((item) => item.id !== id));
+          } else {
+            // Otherwise, update in place
+            setItems((prev) => prev.map((item) => (item.id === id ? updatedItem : item)));
+          }
         }
         return updatedItem;
       } catch (err) {

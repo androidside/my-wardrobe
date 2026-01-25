@@ -21,6 +21,13 @@ export function WardrobeSelector({ onWardrobeChange }: WardrobeSelectorProps) {
   };
 
   const currentWardrobe = wardrobes.find((w) => w.id === currentWardrobeId);
+  
+  // Display name for the selector
+  const displayName = currentWardrobeId === 'all' 
+    ? 'All Wardrobes' 
+    : currentWardrobe 
+      ? currentWardrobe.name 
+      : 'Select wardrobe';
 
   if (loading) {
     return (
@@ -40,10 +47,11 @@ export function WardrobeSelector({ onWardrobeChange }: WardrobeSelectorProps) {
     >
       <SelectTrigger className="w-full bg-white shadow">
         <SelectValue placeholder="Select wardrobe">
-          {currentWardrobe ? currentWardrobe.name : 'Select wardrobe'}
+          {displayName}
         </SelectValue>
       </SelectTrigger>
       <SelectContent>
+        <SelectItem value="all">All Wardrobes</SelectItem>
         {wardrobes.map((wardrobe) => (
           <SelectItem key={wardrobe.id} value={wardrobe.id}>
             {wardrobe.name}
