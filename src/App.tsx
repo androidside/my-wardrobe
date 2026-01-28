@@ -208,12 +208,6 @@ function AppContent() {
     // Note: Color filtering is now handled within WardrobeGallery
   };
 
-  const handleStatsFilterBrand = (_brand: string) => {
-    setSelectedCategory(null);
-    setActivePage('wardrobe');
-    // Note: Brand filtering is now handled via search in WardrobeGallery
-  };
-
   // Get current wardrobe name
   const currentWardrobe = wardrobes.find(w => w.id === currentWardrobeId);
   const currentWardrobeName = currentWardrobeId === 'all' 
@@ -344,7 +338,6 @@ function AppContent() {
             userId={user!.uid}
             onFilterCategory={handleStatsFilterCategory}
             onFilterColor={handleStatsFilterColor}
-            onFilterBrand={handleStatsFilterBrand}
             onNavigateToWardrobe={() => setActivePage('wardrobe')}
           />
         ) : null}

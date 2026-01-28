@@ -6,33 +6,33 @@ import {
   PieChart,
   Pie,
   Cell,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from 'recharts';
 import {
   calculateOverviewStats,
   calculateCategoryDistribution,
-  calculateColorDistribution,
   calculateBrandStats,
-  calculateFormalityDistribution,
-  calculateTagStats,
+  calculateWardrobeHealth,
+  calculateCategoryCosts,
+  calculateInvestmentRatio,
+  detectDuplicates,
+  calculateColorStrategy,
   getAllItemsForUser,
   formatCurrency,
-  type OverviewStats,
   type CategoryDistribution,
-  type ColorStat,
   type BrandStat,
-  type FormalityDistribution,
-  type TagStat,
+  type WardrobeHealthScore,
+  type CategoryCostStat,
+  type InvestmentRatio,
+  type DuplicateGroup,
 } from '@/utils/statsUtils';
-import { TrendingUp, DollarSign, ShoppingBag, Tag } from 'lucide-react';
+import { TrendingUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { wardrobeStorageService } from '@/services/wardrobeStorage';
+import { DuplicateItemsDialog } from '@/components/DuplicateItemsDialog';
+import { ColorItemsDialog } from '@/components/ColorItemsDialog';
+import { BrandItemsDialog } from '@/components/BrandItemsDialog';
+import { ClothingDetailsDialog } from '@/components/ClothingDetailsDialog';
 
 interface StatisticsViewProps {
   currentWardrobeItems: ClothingItem[];
@@ -42,7 +42,6 @@ interface StatisticsViewProps {
   userId: string;
   onFilterCategory?: (category: ClothingCategory) => void;
   onFilterColor?: (color: ClothingColor) => void;
-  onFilterBrand?: (brand: string) => void;
   onNavigateToWardrobe: () => void;
 }
 
@@ -51,8 +50,6 @@ export function StatisticsView({
   wardrobes,
   userId,
   onFilterCategory,
-  onFilterColor,
-  onFilterBrand,
   onNavigateToWardrobe,
 }: StatisticsViewProps) {
   // Selected wardrobe ID or 'all' for all wardrobes
@@ -104,29 +101,19 @@ export function StatisticsView({
   // Calculate all statistics
   const overviewStats = calculateOverviewStats(displayItems);
   const categoryDistribution = calculateCategoryDistribution(displayItems);
-  const colorStats = calculateColorDistribution(displayItems);
   const brandStats = calculateBrandStats(displayItems);
-  const formalityDistribution = calculateFormalityDistribution(displayItems);
-  const tagStats = calculateTagStats(displayItems);
+  
+  // NEW: Phase 1 & 2 statistics
+  const wardrobeHealth = calculateWardrobeHealth(displayItems);
+  const categoryCosts = calculateCategoryCosts(displayItems);
+  const investmentRatio = calculateInvestmentRatio(displayItems);
+  const duplicates = detectDuplicates(displayItems);
+  const colorStrategy = calculateColorStrategy(displayItems);
 
   // Handle chart interactions
   const handleCategoryClick = (data: CategoryDistribution) => {
     if (onFilterCategory) {
       onFilterCategory(data.category as ClothingCategory);
-      onNavigateToWardrobe();
-    }
-  };
-
-  const handleColorClick = (data: ColorStat) => {
-    if (onFilterColor) {
-      onFilterColor(data.color as ClothingColor);
-      onNavigateToWardrobe();
-    }
-  };
-
-  const handleBrandClick = (brand: string) => {
-    if (onFilterBrand) {
-      onFilterBrand(brand);
       onNavigateToWardrobe();
     }
   };
@@ -193,73 +180,36 @@ export function StatisticsView({
           </div>
         ) : (
           <>
-            {/* Overview Stats */}
-            <OverviewSection stats={overviewStats} />
+            {/* PHASE 1: Health Dashboard */}
+            <HealthDashboardSection healthScore={wardrobeHealth} />
 
-            {/* Category Distribution */}
+            {/* PHASE 1: Cost Intelligence */}
+            <CostIntelligenceSection
+              categoryCosts={categoryCosts}
+              investmentRatio={investmentRatio}
+              totalValue={overviewStats.totalValue}
+              totalItems={overviewStats.totalItems}
+            />
+
+            {/* PHASE 2: Duplicate Detector */}
+            <DuplicateDetectorSection duplicates={duplicates} />
+
+            {/* PHASE 2: Color Strategy (replaces old ColorSection) */}
+            <ColorStrategySection colorStrategy={colorStrategy} allItems={displayItems} />
+
+            {/* Keep existing sections */}
             <CategorySection 
               data={categoryDistribution} 
               onCategoryClick={handleCategoryClick} 
             />
 
-            {/* Color Palette */}
-            <ColorSection 
-              data={colorStats} 
-              onColorClick={handleColorClick} 
-            />
-
             {/* Brand Analysis */}
             <BrandSection 
               data={brandStats} 
-              onBrandClick={handleBrandClick} 
-            />
-
-            {/* Style Analysis */}
-            <StyleSection 
-              formalityData={formalityDistribution} 
-              tagData={tagStats} 
+              allItems={displayItems}
             />
           </>
         )}
-      </div>
-    </div>
-  );
-}
-
-// Overview Section Component
-function OverviewSection({ stats }: { stats: OverviewStats }) {
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <div className="bg-white rounded-lg shadow p-4 text-center">
-        <div className="w-10 h-10 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-full flex items-center justify-center mx-auto mb-2">
-          <ShoppingBag className="h-5 w-5 text-indigo-600" />
-        </div>
-        <div className="text-3xl font-bold text-indigo-600">{stats.totalItems}</div>
-        <div className="text-sm text-gray-600 mt-1">Total Items</div>
-      </div>
-      
-      <div className="bg-white rounded-lg shadow p-4 text-center">
-        <div className="w-10 h-10 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-full flex items-center justify-center mx-auto mb-2">
-          <DollarSign className="h-5 w-5 text-indigo-600" />
-        </div>
-        <div className="text-3xl font-bold text-indigo-600">{formatCurrency(stats.totalValue)}</div>
-        <div className="text-sm text-gray-600 mt-1">Total Value</div>
-      </div>
-      
-      <div className="bg-white rounded-lg shadow p-4 text-center">
-        <div className="w-10 h-10 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-full flex items-center justify-center mx-auto mb-2">
-          <TrendingUp className="h-5 w-5 text-indigo-600" />
-        </div>
-        <div className="text-3xl font-bold text-indigo-600">{formatCurrency(stats.averageCost)}</div>
-        <div className="text-sm text-gray-600 mt-1">Avg Cost</div>
-      </div>
-      
-      <div className="bg-white rounded-lg shadow p-4 text-center">
-        <div className="w-10 h-10 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-full flex items-center justify-center mx-auto mb-2">
-          <Tag className="h-5 w-5 text-indigo-600" />
-        </div>
-        <div className="text-3xl font-bold text-indigo-600">{stats.uniqueBrands}</div>
-        <div className="text-sm text-gray-600 mt-1">Brands</div>
       </div>
     </div>
   );
@@ -329,159 +279,520 @@ function CategorySection({
   );
 }
 
-// Color Section Component
-function ColorSection({ 
+// Brand Section Component
+function BrandSection({ 
   data, 
-  onColorClick 
+  allItems,
 }: { 
-  data: ColorStat[]; 
-  onColorClick: (data: ColorStat) => void;
+  data: BrandStat[]; 
+  allItems: ClothingItem[];
 }) {
-  if (!data || data.length === 0) {
+  const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
+  const [brandDialogOpen, setBrandDialogOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<ClothingItem | null>(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+
+  const handleBrandClick = (brand: string) => {
+    setSelectedBrand(brand);
+    setBrandDialogOpen(true);
+  };
+
+  const handleItemClick = (item: ClothingItem) => {
+    setSelectedItem(item);
+    setDetailsDialogOpen(true);
+  };
+
+  // Filter items by selected brand
+  const filteredItems = selectedBrand
+    ? allItems.filter(item => item.brand === selectedBrand)
+    : [];
+
+  return (
+    <>
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Top Brands</h2>
+        <p className="text-sm text-gray-600 mb-4">
+          Click any brand to see all items:
+        </p>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {data.map((brand) => (
+            <button
+              key={brand.brand}
+              onClick={() => handleBrandClick(brand.brand)}
+              className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg p-4 text-left hover:shadow-md transition-shadow"
+            >
+              <div className="font-semibold text-gray-900 text-lg mb-2">{brand.brand}</div>
+              <div className="space-y-1 text-sm text-gray-600">
+                <div>{brand.itemCount} items</div>
+                <div>{formatCurrency(brand.totalSpent)} total</div>
+                <div className="text-xs text-gray-500">
+                  Avg: {formatCurrency(brand.averageCost)}
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+        
+        {data.length === 0 && (
+          <p className="text-center text-gray-500 py-4">No brand data available</p>
+        )}
+      </div>
+
+      {/* Brand Items Dialog */}
+      {selectedBrand && (
+        <BrandItemsDialog
+          items={filteredItems}
+          brand={selectedBrand}
+          open={brandDialogOpen}
+          onOpenChange={setBrandDialogOpen}
+          onItemClick={handleItemClick}
+        />
+      )}
+
+      {/* Item Details Dialog */}
+      <ClothingDetailsDialog
+        item={selectedItem}
+        open={detailsDialogOpen}
+        onOpenChange={setDetailsDialogOpen}
+      />
+    </>
+  );
+}
+
+// ===== PHASE 1: NEW COMPONENTS =====
+
+// Health Dashboard Section
+function HealthDashboardSection({ healthScore }: { healthScore: WardrobeHealthScore }) {
+  return (
+    <div className="bg-white rounded-lg shadow p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-semibold text-gray-900">Wardrobe Health Score</h2>
+        <div className="flex items-center gap-2">
+          <div className="text-5xl font-bold text-indigo-600">{healthScore.overallScore}</div>
+          <div className="text-lg text-gray-600">/100</div>
+        </div>
+      </div>
+
+      {/* Alerts - Gaps */}
+      {healthScore.gaps.length > 0 && (
+        <div className="mb-4 p-4 bg-red-50 border-l-4 border-red-500 rounded">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-red-900 mb-2">
+                Missing Basics: {healthScore.gaps.length} gap{healthScore.gaps.length > 1 ? 's' : ''} found
+              </h3>
+              <ul className="space-y-1">
+                {healthScore.gaps.map((gap, idx) => (
+                  <li key={idx} className="text-sm text-red-800">
+                    • No {gap.type}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Redundancies */}
+      {healthScore.redundancies.length > 0 && (
+        <div className="mb-4 p-4 bg-yellow-50 border-l-4 border-yellow-500 rounded">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-yellow-900 mb-2">
+                Redundancy: Consider decluttering
+              </h3>
+              <ul className="space-y-1">
+                {healthScore.redundancies.map((red, idx) => (
+                  <li key={idx} className="text-sm text-yellow-800">
+                    • {red.count} {red.color} {red.type} ({red.recommendation})
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Strengths */}
+      {healthScore.strengths.length > 0 && (
+        <div className="p-4 bg-green-50 border-l-4 border-green-500 rounded">
+          <div className="flex items-start gap-3">
+            <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-green-900 mb-2">
+                Well-balanced:
+              </h3>
+              <ul className="space-y-1">
+                {healthScore.strengths.map((strength, idx) => (
+                  <li key={idx} className="text-sm text-green-800">
+                    • {strength}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Cost Intelligence Section
+function CostIntelligenceSection({
+  categoryCosts,
+  investmentRatio,
+  totalValue,
+  totalItems,
+}: {
+  categoryCosts: CategoryCostStat[];
+  investmentRatio: InvestmentRatio;
+  totalValue: number;
+  totalItems: number;
+}) {
+  const overallAvg = totalItems > 0 ? totalValue / totalItems : 0;
+
+  return (
+    <div className="bg-white rounded-lg shadow p-6">
+      <h2 className="text-xl font-semibold text-gray-900 mb-4">Spending Analysis</h2>
+      
+      {/* Total Summary */}
+      <div className="mb-6 p-4 bg-indigo-50 rounded-lg">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <div className="text-sm text-gray-600">Total Value</div>
+            <div className="text-2xl font-bold text-indigo-600">{formatCurrency(totalValue)}</div>
+          </div>
+          <div>
+            <div className="text-sm text-gray-600">Total Items</div>
+            <div className="text-2xl font-bold text-indigo-600">{totalItems}</div>
+          </div>
+          <div>
+            <div className="text-sm text-gray-600">Average</div>
+            <div className="text-2xl font-bold text-indigo-600">{formatCurrency(overallAvg)}/item</div>
+          </div>
+        </div>
+      </div>
+
+      {/* By Category with bars */}
+      <div className="mb-6">
+        <h3 className="text-sm font-medium text-gray-700 mb-3">By Category</h3>
+        <div className="space-y-3">
+          {categoryCosts.map(cat => (
+            <div key={cat.category}>
+              <div className="flex justify-between text-sm mb-1">
+                <span className="font-medium">{cat.category}</span>
+                <span className="text-gray-600">
+                  {formatCurrency(cat.totalCost)} | Avg: {formatCurrency(cat.averageCost)} ({cat.itemCount}x)
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div 
+                  className="bg-indigo-600 h-2.5 rounded-full transition-all" 
+                  style={{ width: `${cat.percentage}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Investment Ratio */}
+      <div className="mb-6">
+        <h3 className="text-sm font-medium text-gray-700 mb-3">Investment Ratio</h3>
+        <div className="grid grid-cols-3 gap-4">
+          <div className="text-center p-4 bg-purple-50 rounded-lg">
+            <div className="text-xs text-gray-600 mb-1">Premium (&gt;€100)</div>
+            <div className="text-2xl font-bold text-purple-600">{investmentRatio.premium.count}</div>
+            <div className="text-sm text-gray-600 mt-1">{formatCurrency(investmentRatio.premium.total)}</div>
+            <div className="text-xs text-gray-500 mt-1">
+              {totalValue > 0 ? Math.round((investmentRatio.premium.total / totalValue) * 100) : 0}% of budget
+            </div>
+          </div>
+          <div className="text-center p-4 bg-blue-50 rounded-lg">
+            <div className="text-xs text-gray-600 mb-1">Mid-range (€30-100)</div>
+            <div className="text-2xl font-bold text-blue-600">{investmentRatio.midRange.count}</div>
+            <div className="text-sm text-gray-600 mt-1">{formatCurrency(investmentRatio.midRange.total)}</div>
+            <div className="text-xs text-gray-500 mt-1">
+              {totalValue > 0 ? Math.round((investmentRatio.midRange.total / totalValue) * 100) : 0}% of budget
+            </div>
+          </div>
+          <div className="text-center p-4 bg-gray-50 rounded-lg">
+            <div className="text-xs text-gray-600 mb-1">Budget (&lt;€30)</div>
+            <div className="text-2xl font-bold text-gray-600">{investmentRatio.budget.count}</div>
+            <div className="text-sm text-gray-600 mt-1">{formatCurrency(investmentRatio.budget.total)}</div>
+            <div className="text-xs text-gray-500 mt-1">
+              {totalValue > 0 ? Math.round((investmentRatio.budget.total / totalValue) * 100) : 0}% of budget
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Most Expensive Items */}
+      {categoryCosts[0]?.topItems && categoryCosts[0].topItems.length > 0 && (
+        <div className="pt-6 border-t border-gray-200">
+          <h3 className="text-sm font-medium text-gray-700 mb-3">Most expensive items:</h3>
+          <ol className="space-y-2">
+            {categoryCosts[0].topItems.slice(0, 3).map((item, i) => (
+              <li key={i} className="text-sm text-gray-700 flex justify-between">
+                <span>
+                  {i + 1}. {item.brand} {item.name}
+                </span>
+                <span className="font-semibold">{formatCurrency(item.cost)}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ===== PHASE 2: NEW COMPONENTS =====
+
+// Duplicate Detector Section
+function DuplicateDetectorSection({ duplicates }: { duplicates: DuplicateGroup[] }) {
+  const [selectedDuplicate, setSelectedDuplicate] = useState<DuplicateGroup | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<ClothingItem | null>(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+
+  const handleDuplicateClick = (dup: DuplicateGroup) => {
+    setSelectedDuplicate(dup);
+    setDialogOpen(true);
+  };
+
+  const handleItemClick = (item: ClothingItem) => {
+    setSelectedItem(item);
+    setDetailsDialogOpen(true);
+  };
+
+  if (duplicates.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Color Palette</h2>
-        <p className="text-center text-gray-500 py-8">
-          No color data available. Add items to your wardrobe to see color distribution.
-        </p>
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">Redundancy Analysis</h2>
+        <div className="text-center py-8">
+          <CheckCircle2 className="h-12 w-12 text-green-600 mx-auto mb-3" />
+          <p className="text-gray-600">No significant redundancies detected!</p>
+          <p className="text-sm text-gray-500 mt-1">Your wardrobe is well-curated.</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">Color Palette</h2>
-      
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="color" />
-          <YAxis />
-          <Tooltip 
-            formatter={(value) => `${value} items`}
-            labelFormatter={(label) => `Color: ${label}`}
-          />
-          <Bar 
-            dataKey="count" 
-            onClick={(entry: any) => onColorClick(entry.payload)}
-            style={{ cursor: 'pointer' }}
-            radius={[4, 4, 0, 0]}
-          >
-            {data.map((entry, index) => (
-              <Cell 
-                key={`cell-${index}`} 
-                fill={entry.hexCode}
-                stroke={entry.color === 'White' ? '#E5E7EB' : 'none'}
-                strokeWidth={entry.color === 'White' ? 1 : 0}
-              />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-// Brand Section Component
-function BrandSection({ 
-  data, 
-  onBrandClick 
-}: { 
-  data: BrandStat[]; 
-  onBrandClick: (brand: string) => void;
-}) {
-  return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">Top Brands</h2>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {data.map((brand) => (
-          <button
-            key={brand.brand}
-            onClick={() => onBrandClick(brand.brand)}
-            className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg p-4 text-left hover:shadow-md transition-shadow"
-          >
-            <div className="font-semibold text-gray-900 text-lg mb-2">{brand.brand}</div>
-            <div className="space-y-1 text-sm text-gray-600">
-              <div>{brand.itemCount} items</div>
-              <div>{formatCurrency(brand.totalSpent)} total</div>
-              <div className="text-xs text-gray-500">
-                Avg: {formatCurrency(brand.averageCost)}
+    <>
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">Redundancy Analysis</h2>
+        <p className="text-sm text-gray-600 mb-4">
+          Similar items detected - click any card to see details:
+        </p>
+        
+        <div className="space-y-4">
+          {duplicates.map((dup, idx) => (
+            <button
+              key={idx}
+              onClick={() => handleDuplicateClick(dup)}
+              className="w-full text-left border-l-4 border-orange-500 pl-4 py-2 bg-orange-50 rounded-r hover:bg-orange-100 transition-colors cursor-pointer"
+            >
+              <div className="font-semibold text-gray-900 mb-1">
+                {dup.items.length} {dup.color} {dup.type}
               </div>
-            </div>
-          </button>
-        ))}
+              <div className="text-sm text-gray-600 mb-2">
+                Brands: {dup.items.map(i => i.brand).slice(0, 5).join(', ')}
+                {dup.items.length > 5 && ` +${dup.items.length - 5} more`}
+              </div>
+              <div className="text-sm text-orange-700 font-medium">
+                💡 {dup.recommendation}
+              </div>
+              {dup.potentialValue > 0 && (
+                <div className="text-xs text-gray-500 mt-1">
+                  Potential value to recover: ~{formatCurrency(dup.potentialValue)}
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
       </div>
-      
-      {data.length === 0 && (
-        <p className="text-center text-gray-500 py-4">No brand data available</p>
+
+      {/* Duplicate Items Dialog */}
+      {selectedDuplicate && (
+        <DuplicateItemsDialog
+          items={selectedDuplicate.items}
+          type={selectedDuplicate.type}
+          color={selectedDuplicate.color}
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          onItemClick={handleItemClick}
+        />
       )}
-    </div>
+
+      {/* Item Details Dialog */}
+      <ClothingDetailsDialog
+        item={selectedItem}
+        open={detailsDialogOpen}
+        onOpenChange={setDetailsDialogOpen}
+      />
+    </>
   );
 }
 
-// Style Section Component
-function StyleSection({ 
-  formalityData, 
-  tagData 
-}: { 
-  formalityData: FormalityDistribution[]; 
-  tagData: TagStat[];
+// Color Strategy Section
+function ColorStrategySection({
+  colorStrategy,
+  allItems,
+}: {
+  colorStrategy: ReturnType<typeof calculateColorStrategy>;
+  allItems: ClothingItem[];
 }) {
-  // Check if there's any formality data
-  const hasFormalityData = formalityData.some(item => item.count > 0);
+  const [selectedColor, setSelectedColor] = useState<{ color: string; hexCode: string } | null>(null);
+  const [colorDialogOpen, setColorDialogOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<ClothingItem | null>(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+
+  const handleColorClick = (color: string, hexCode: string) => {
+    setSelectedColor({ color, hexCode });
+    setColorDialogOpen(true);
+  };
+
+  const handleItemClick = (item: ClothingItem) => {
+    setSelectedItem(item);
+    setDetailsDialogOpen(true);
+  };
+
+  // Filter items by selected color (including items with that color in secondary colors)
+  const filteredItems = selectedColor
+    ? allItems.filter(
+        item =>
+          item.color === selectedColor.color ||
+          (item.colors && item.colors.includes(selectedColor.color as any))
+      )
+    : [];
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">Style Analysis</h2>
-      
-      {/* Formality Chart */}
-      <div className="mb-6">
-        <h3 className="text-sm font-medium text-gray-700 mb-3">Formality Distribution</h3>
-        {hasFormalityData ? (
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={formalityData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="level" />
-              <YAxis />
-              <Tooltip formatter={(value) => `${value} items`} />
-              <Legend />
-              <Bar dataKey="count" name="Items">
-                {formalityData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.fill} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        ) : (
-          <p className="text-center text-gray-500 py-8">
-            No formality data available. Make sure your items have formality levels set.
-          </p>
-        )}
-      </div>
-      
-      {/* Tags */}
-      {tagData.length > 0 && (
-        <div>
-          <h3 className="text-sm font-medium text-gray-700 mb-3">Most Used Tags</h3>
-          <div className="flex flex-wrap gap-2">
-            {tagData.map((tag) => (
-              <div
-                key={tag.tag}
-                className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-sm"
+    <>
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">Color Strategy</h2>
+        <p className="text-sm text-gray-600 mb-4">
+          Click any color to see all items in that color:
+        </p>
+
+        {/* Neutrals */}
+        <div className="mb-6">
+          <h3 className="text-sm font-medium text-gray-700 mb-3">NEUTRALS (Foundation) ✅</h3>
+          <div className="flex flex-wrap gap-4">
+            {colorStrategy.groups.find(g => g.category === 'neutrals')?.colors.map(c => (
+              <button
+                key={c.color}
+                onClick={() => handleColorClick(c.color, c.hexCode)}
+                className="text-center transition-transform hover:scale-110"
               >
-                {tag.tag} ({tag.count})
-              </div>
+                <div
+                  className="w-16 h-16 rounded-full border-2 border-gray-300 flex items-center justify-center text-sm font-bold shadow-sm hover:shadow-lg cursor-pointer"
+                  style={{
+                    backgroundColor: c.hexCode,
+                    color: c.color === 'White' || c.color === 'Beige' ? '#000' : '#FFF',
+                  }}
+                >
+                  {c.count}
+                </div>
+                <div className="text-xs text-gray-700 mt-1 font-medium">{c.color}</div>
+              </button>
             ))}
           </div>
         </div>
+
+        {/* Accent Colors */}
+        {colorStrategy.groups.find(g => g.category === 'accents')?.colors && 
+         colorStrategy.groups.find(g => g.category === 'accents')!.colors.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-sm font-medium text-gray-700 mb-3">ACCENT COLORS</h3>
+            <div className="flex flex-wrap gap-4">
+              {colorStrategy.groups.find(g => g.category === 'accents')?.colors.map(c => (
+                <button
+                  key={c.color}
+                  onClick={() => handleColorClick(c.color, c.hexCode)}
+                  className="text-center transition-transform hover:scale-110"
+                >
+                  <div
+                    className="w-12 h-12 rounded-full border-2 border-gray-300 flex items-center justify-center text-xs font-bold text-white shadow-sm hover:shadow-lg cursor-pointer"
+                    style={{ backgroundColor: c.hexCode }}
+                  >
+                    {c.count}
+                  </div>
+                  <div className="text-xs text-gray-700 mt-1 font-medium">{c.color}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Statement Colors */}
+        {colorStrategy.groups.find(g => g.category === 'statements')?.colors && 
+         colorStrategy.groups.find(g => g.category === 'statements')!.colors.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-sm font-medium text-gray-700 mb-3">STATEMENT COLORS</h3>
+            <div className="flex flex-wrap gap-3">
+              {colorStrategy.groups.find(g => g.category === 'statements')?.colors.map(c => (
+                <button
+                  key={c.color}
+                  onClick={() => handleColorClick(c.color, c.hexCode)}
+                  className="text-center transition-transform hover:scale-110"
+                >
+                  <div
+                    className="w-10 h-10 rounded-full border-2 border-gray-300 flex items-center justify-center text-xs font-bold text-white shadow-sm hover:shadow-lg cursor-pointer"
+                    style={{ backgroundColor: c.hexCode }}
+                  >
+                    {c.count}
+                  </div>
+                  <div className="text-xs text-gray-700 mt-1 font-medium">{c.color}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Gaps */}
+        {colorStrategy.gaps.length > 0 && (
+          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg mb-4">
+            <h3 className="text-sm font-semibold text-yellow-900 mb-2">⚠️ Gaps Detected:</h3>
+            <ul className="text-sm space-y-1 text-yellow-800">
+              {colorStrategy.gaps.map((gap, idx) => (
+                <li key={idx}>• {gap}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Recommendations */}
+        {colorStrategy.recommendations.length > 0 && (
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h3 className="text-sm font-semibold text-blue-900 mb-2">💡 Recommendation:</h3>
+            <p className="text-sm text-blue-800">{colorStrategy.recommendations[0]}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Color Items Dialog */}
+      {selectedColor && (
+        <ColorItemsDialog
+          items={filteredItems}
+          color={selectedColor.color}
+          hexCode={selectedColor.hexCode}
+          open={colorDialogOpen}
+          onOpenChange={setColorDialogOpen}
+          onItemClick={handleItemClick}
+        />
       )}
-      
-      {tagData.length === 0 && (
-        <p className="text-center text-gray-500 text-sm">
-          No tags found. Add tags to your items to see style insights.
-        </p>
-      )}
-    </div>
+
+      {/* Item Details Dialog */}
+      <ClothingDetailsDialog
+        item={selectedItem}
+        open={detailsDialogOpen}
+        onOpenChange={setDetailsDialogOpen}
+      />
+    </>
   );
 }
