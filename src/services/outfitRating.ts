@@ -1,4 +1,4 @@
-import { ClothingItem, FormalityLevel, ClothingTag } from '@/types/clothing';
+import { ClothingItem, ClothingTag } from '@/types/clothing';
 import { getColorCompatibility, getPatternCompatibility, getTypeCompatibility } from '@/data/outfitCompatibility';
 
 export interface OutfitCombination {
@@ -6,6 +6,14 @@ export interface OutfitCombination {
   bottom?: ClothingItem;
   footwear?: ClothingItem;
   accessories?: ClothingItem[];
+}
+
+export interface ProblematicItem {
+  item: ClothingItem;
+  reason: string;
+  category: 'top' | 'bottom' | 'footwear' | 'accessories';
+  severity: 'high' | 'medium' | 'low'; // How much it's dragging down the score
+  potentialImprovement: number; // Estimated score gain if fixed
 }
 
 export interface OutfitRating {
@@ -20,6 +28,22 @@ export interface OutfitRating {
   feedback: string[];
   strengths: string[];
   suggestions: string[];
+  problematicItems?: ProblematicItem[]; // Items causing issues
+}
+
+// Helper to categorize items
+function getItemCategory(item: ClothingItem): 'top' | 'bottom' | 'footwear' | 'accessories' {
+  const typeLower = item.type.toLowerCase();
+  if (typeLower.includes('shoe') || typeLower.includes('boot') || typeLower.includes('sandal') || typeLower.includes('sneaker') || typeLower.includes('loafer') || typeLower.includes('heel') || typeLower.includes('slipper')) {
+    return 'footwear';
+  }
+  if (typeLower.includes('pant') || typeLower.includes('jean') || typeLower.includes('short') || typeLower.includes('skirt') || typeLower.includes('dress') || typeLower.includes('legging')) {
+    return 'bottom';
+  }
+  if (typeLower.includes('watch') || typeLower.includes('bag') || typeLower.includes('belt') || typeLower.includes('hat') || typeLower.includes('scarf') || typeLower.includes('jewelry') || typeLower.includes('glove') || typeLower.includes('tie') || typeLower.includes('wallet') || typeLower.includes('sock')) {
+    return 'accessories';
+  }
+  return 'top';
 }
 
 /**
@@ -33,6 +57,10 @@ export function calculateOutfitRating(outfit: OutfitCombination): OutfitRating {
   const feedback: string[] = [];
   const strengths: string[] = [];
   const suggestions: string[] = [];
+  const problematicItems: ProblematicItem[] = [];
+  
+  // Track which items have issues (item -> list of issues)
+  const itemIssues = new Map<ClothingItem, Array<{reason: string, severity: number}>>();
 
   const items = [
     outfit.top,
@@ -93,22 +121,26 @@ export function calculateOutfitRating(outfit: OutfitCombination): OutfitRating {
       // Combined score (weighted: 35% color, 25% pattern, 40% type)
       const pairScore = (colorScore * 0.35) + (patternScore * 0.25) + (typeScore * 0.4);
 
-      // Generate feedback for this pair
-      const item1Colors = item1.colors && item1.colors.length > 0 
-        ? `${item1.color}, ${item1.colors.join(', ')}`
-        : item1.color;
-      const item2Colors = item2.colors && item2.colors.length > 0 
-        ? `${item2.color}, ${item2.colors.join(', ')}`
-        : item2.color;
-      const item1PatternText = pattern1 !== 'Solid' ? ` (${pattern1})` : '';
-      const item2PatternText = pattern2 !== 'Solid' ? ` (${pattern2})` : '';
-      
-      if (pairScore >= 8) {
-        strengths.push(`${item1.type} (${item1Colors}${item1PatternText}) and ${item2.type} (${item2Colors}${item2PatternText}) work excellently together`);
-      } else if (pairScore >= 6) {
-        feedback.push(`${item1.type} (${item1Colors}${item1PatternText}) and ${item2.type} (${item2Colors}${item2PatternText}) are a good match`);
-      } else if (pairScore < 5) {
-        suggestions.push(`Consider changing ${item1.type} or ${item2.type} - the combination needs improvement`);
+      // Track problematic pairs
+      if (pairScore < 5.5) {
+        const severity = pairScore < 4 ? 3 : pairScore < 5 ? 2 : 1;
+        
+        // Both items contribute to the clash
+        if (!itemIssues.has(item1)) itemIssues.set(item1, []);
+        if (!itemIssues.has(item2)) itemIssues.set(item2, []);
+        
+        itemIssues.get(item1)!.push({
+          reason: `Clashes with ${item2.type}`,
+          severity,
+        });
+        itemIssues.get(item2)!.push({
+          reason: `Clashes with ${item1.type}`,
+          severity,
+        });
+        
+        suggestions.push(`${item1.type} and ${item2.type} don't match well - consider swapping one`);
+      } else if (pairScore >= 8.5) {
+        strengths.push(`${item1.type} and ${item2.type} pair excellently`);
       }
     }
   }
@@ -122,29 +154,41 @@ export function calculateOutfitRating(outfit: OutfitCombination): OutfitRating {
 
   // 5. Apply IMPROVED formality matching rules
   let formalityBonus = 0;
-  const formalityLevels = items
-    .filter(item => item.type !== 'Underwear') // Exclude underwear from formality check
-    .map(item => item.formalityLevel)
-    .filter((level): level is FormalityLevel => level !== undefined);
+  const formalityItems = items.filter(item => item.type !== 'Underwear' && item.formalityLevel !== undefined);
+  const formalityLevels = formalityItems.map(item => item.formalityLevel!);
   
   if (formalityLevels.length >= 2) {
     const maxFormality = Math.max(...formalityLevels);
     const minFormality = Math.min(...formalityLevels);
     const variance = maxFormality - minFormality;
+    const avgFormality = formalityLevels.reduce((a, b) => a + b, 0) / formalityLevels.length;
     
     if (variance <= 0.5) {
       formalityBonus = 1.0;
-      feedback.push('Excellent formality consistency!');
-      strengths.push('All items perfectly matched in formality');
+      // Only add strength if score is already high (reduce positive spam)
+      if (matrixScore >= 8) {
+        strengths.push('Perfect formality consistency');
+      }
     } else if (variance <= 1.0) {
       formalityBonus = 0.0;
       // Good match, no bonus or penalty
     } else if (variance <= 1.5) {
       formalityBonus = -0.2;
-      feedback.push('Formality levels are slightly mismatched');
     } else {
       formalityBonus = -0.5;
-      suggestions.push('Consider matching formality levels for a more cohesive look');
+      suggestions.push('Mix of formal and casual items - try matching formality levels');
+      
+      // Find the outlier(s) - items furthest from average
+      formalityItems.forEach(item => {
+        const diff = Math.abs(item.formalityLevel! - avgFormality);
+        if (diff > 1.5) {
+          if (!itemIssues.has(item)) itemIssues.set(item, []);
+          itemIssues.get(item)!.push({
+            reason: item.formalityLevel! > avgFormality ? 'Too formal for outfit' : 'Too casual for outfit',
+            severity: 2,
+          });
+        }
+      });
     }
     
     matrixScore += formalityBonus;
@@ -165,7 +209,10 @@ export function calculateOutfitRating(outfit: OutfitCombination): OutfitRating {
     const count = tagCounts.get(tag) || 0;
     if (count >= 2) {
       tagBonus += 2.0;
-      strengths.push(`All items work well for: ${tag}`);
+      // Only mention if score is high (reduce positive spam)
+      if (matrixScore >= 8) {
+        strengths.push(`Perfect for ${tag}`);
+      }
       break; // Only count once
     }
   }
@@ -176,46 +223,61 @@ export function calculateOutfitRating(outfit: OutfitCombination): OutfitRating {
     const count = tagCounts.get(tag) || 0;
     if (count >= 2) {
       tagBonus += 1.0;
-      strengths.push(`Consistent ${tag} style`);
-      break;
+      break; // Don't spam about style consistency
     }
   }
 
-  // Season mismatches
+  // Season mismatches (only mention if it's a significant issue)
   const hasSummer = allTags.includes('Summer') || allTags.includes('Hot Weather');
   const hasWinter = allTags.includes('Winter') || allTags.includes('Cold Weather');
   if (hasSummer && hasWinter) {
     tagBonus -= 1.0;
-    suggestions.push('Mixed seasonal items - consider weather appropriateness');
+    suggestions.push('Mixing summer and winter items - check weather appropriateness');
   }
 
   matrixScore += tagBonus;
 
-  // 7. Check for neutral colors (they stabilize outfits)
-  const neutralColors = ['Black', 'White', 'Gray', 'Beige', 'Navy'];
-  const hasNeutral = items.some(item => {
-    const allColors = item.colors && item.colors.length > 0 
-      ? [item.color, ...item.colors]
-      : [item.color];
-    return allColors.some(c => neutralColors.includes(c));
-  });
-  if (hasNeutral && items.length > 1) {
-    strengths.push('Neutral colors provide a solid foundation');
-  }
-
   // Final score (capped at 10)
   const finalScore = Math.min(10, Math.max(0, matrixScore));
 
-  // Generate overall feedback
-  if (finalScore >= 8.5) {
-    feedback.push('Excellent combination! This outfit works very well together.');
-  } else if (finalScore >= 7) {
-    feedback.push('Good combination with room for minor improvements.');
-  } else if (finalScore >= 5.5) {
-    feedback.push('Decent combination, but some items could be better matched.');
-  } else {
-    feedback.push('This combination needs improvement. Consider different combinations.');
+  // Generate minimal overall feedback (only if needed)
+  if (finalScore >= 9) {
+    feedback.push('Outstanding outfit!');
+  } else if (finalScore < 6) {
+    feedback.push('This combination could use some improvements');
   }
+  // For mid-range scores (6-9), let the visual scores speak for themselves
+
+  // Convert itemIssues map to problematicItems array
+  itemIssues.forEach((issues, item) => {
+    // Calculate total severity and average
+    const totalSeverity = issues.reduce((sum, issue) => sum + issue.severity, 0);
+    const avgSeverity = totalSeverity / issues.length;
+    
+    // Estimate potential improvement (rough heuristic)
+    const potentialImprovement = avgSeverity * 0.5 + (issues.length * 0.3);
+    
+    // Get main reason (most severe)
+    const mainReason = issues.reduce((worst, issue) => 
+      issue.severity > worst.severity ? issue : worst
+    ).reason;
+    
+    problematicItems.push({
+      item,
+      reason: mainReason,
+      category: getItemCategory(item),
+      severity: avgSeverity >= 2.5 ? 'high' : avgSeverity >= 1.5 ? 'medium' : 'low',
+      potentialImprovement: Math.round(potentialImprovement * 10) / 10,
+    });
+  });
+
+  // Sort by severity and potential improvement
+  problematicItems.sort((a, b) => {
+    const severityWeight = { high: 3, medium: 2, low: 1 };
+    const severityDiff = severityWeight[b.severity] - severityWeight[a.severity];
+    if (severityDiff !== 0) return severityDiff;
+    return b.potentialImprovement - a.potentialImprovement;
+  });
 
   return {
     score: Math.round(finalScore * 10) / 10,
@@ -225,9 +287,10 @@ export function calculateOutfitRating(outfit: OutfitCombination): OutfitRating {
     typeScore: Math.round(avgTypeScore * 10) / 10,
     formalityBonus: Math.round(formalityBonus * 10) / 10,
     tagBonus: Math.round(tagBonus * 10) / 10,
-    feedback,
-    strengths,
-    suggestions,
+    feedback: feedback.slice(0, 2), // Max 2 feedback items
+    strengths: strengths.slice(0, 2), // Max 2 strengths
+    suggestions: suggestions.slice(0, 3), // Max 3 suggestions (prioritize problems)
+    problematicItems: problematicItems.slice(0, 2), // Max 2 problematic items
   };
 }
 

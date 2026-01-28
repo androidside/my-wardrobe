@@ -85,6 +85,7 @@ export function FittingRoom({ items }: FittingRoomProps) {
   });
   
   const [rating, setRating] = useState<OutfitRating | null>(null);
+  const [currentOutfitCombination, setCurrentOutfitCombination] = useState<OutfitCombination>({});
   const [imageUrls, setImageUrls] = useState<Record<string, string | null>>({});
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerCategory, setPickerCategory] = useState<LayerCategory>('base');
@@ -145,6 +146,7 @@ export function FittingRoom({ items }: FittingRoomProps) {
       accessories: layeredOutfit.accessories,
     };
 
+    setCurrentOutfitCombination(outfitForRating);
     const newRating = calculateOutfitRating(outfitForRating);
     setRating(newRating);
   }, [layeredOutfit]);
@@ -457,7 +459,36 @@ export function FittingRoom({ items }: FittingRoomProps) {
         {/* Rating Panel */}
         {rating && (
           <div className="mt-8 max-w-2xl mx-auto">
-            <RatingPanel rating={rating} />
+            <RatingPanel 
+              rating={rating} 
+              currentOutfit={currentOutfitCombination}
+              allItems={items}
+              onSwapItem={(category, newItem) => {
+                // Handle swapping items
+                if (category === 'top') {
+                  const topLayer = getTopLayer(newItem);
+                  setLayeredOutfit(prev => ({
+                    ...prev,
+                    [topLayer]: [newItem],
+                  }));
+                } else if (category === 'bottom') {
+                  setLayeredOutfit(prev => ({
+                    ...prev,
+                    bottoms: [newItem],
+                  }));
+                } else if (category === 'footwear') {
+                  setLayeredOutfit(prev => ({
+                    ...prev,
+                    footwear: newItem,
+                  }));
+                } else if (category === 'accessories') {
+                  setLayeredOutfit(prev => ({
+                    ...prev,
+                    accessories: [...prev.accessories, newItem],
+                  }));
+                }
+              }}
+            />
           </div>
         )}
       </div>
